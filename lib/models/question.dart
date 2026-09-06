@@ -63,6 +63,8 @@ class Question {
     }
     final correctId = r['correct_option_id'];
     final explanation = r['explanation'];
+    final hasExplanation =
+        explanation is String && explanation.trim().isNotEmpty;
     return Question(
       id: r['id'] as int,
       topicId: (r['topic_id'] as int?) ?? 0,
@@ -73,9 +75,7 @@ class Question {
       correctOptionId: correctId is int ? correctId : null,
       correctOptionIds: correctIds,
       allowsMultiple: (r['allows_multiple_answers'] as int?) == 1,
-      explanation: (explanation is String && explanation.trim().isNotEmpty)
-          ? (explanation as String).trim()
-          : null,
+      explanation: hasExplanation ? (explanation as String).trim() : null,
       points: (r['points'] as int?) ?? 1,
     );
   }

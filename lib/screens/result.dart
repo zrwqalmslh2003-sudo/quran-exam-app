@@ -79,7 +79,7 @@ class ResultScreen extends StatelessWidget {
                                 fontWeight: FontWeight.bold,
                                 color: _color)),
                         const SizedBox(height: 4),
-                        Text('$_score من $_totalPoints',
+                        Text('$score من $totalPoints',
                             style: Theme.of(context).textTheme.bodyMedium),
                       ],
                     ),

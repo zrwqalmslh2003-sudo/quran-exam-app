@@ -87,8 +87,8 @@ class _MainCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const _MainCard({
-    required this.icon,
-    required this.emoji,
+    this.icon,
+    this.emoji,
     required this.iconBg,
     required this.iconColor,
     required this.title,
