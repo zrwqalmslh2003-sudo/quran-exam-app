@@ -28,7 +28,11 @@ jobs:
       - name: Apply app name and id
         run: |
           sed -i 's/android:label="quran_exam_app"/android:label="اختبارات قالون"/' android/app/src/main/AndroidManifest.xml
-          sed -i 's/applicationId = "com.qalon.quran_exam_app"/applicationId = "com.qalon.exams"/' android/app/build.gradle.kts
+          if [ -f android/app/build.gradle.kts ]; then
+            sed -i 's/applicationId = "com.qalon.quran_exam_app"/applicationId = "com.qalon.exams"/' android/app/build.gradle.kts
+          else
+            sed -i 's/applicationId "com.qalon.quran_exam_app"/applicationId "com.qalon.exams"/' android/app/build.gradle
+          fi
       - name: Install dependencies
         run: flutter pub get
 
