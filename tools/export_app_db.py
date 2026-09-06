@@ -21,15 +21,18 @@ QURAN_TABLES = ["chapters", "verses", "tafseer"]
 
 
 def copy_table(src: sqlite3.Connection, dst: sqlite3.Connection, table: str,
-               table_rename: str | None = None) -> int:
-    cols = [c[1] for c in src.execute(f"PRAGMA table_info({table})")]
+               table_rename: str | None = None,
+               drop_columns: tuple[str, ...] = ()) -> int:
+    info = src.execute(f"PRAGMA table_info({table})").fetchall()
+    keep_idx = [i for i, c in enumerate(info) if c[1] not in drop_columns]
+    cols = [info[i][1] for i in keep_idx]
     rows = list(src.execute(f"SELECT * FROM {table}"))
     cols_sql = ", ".join(f'"{c}"' for c in cols)
     placeholders = ", ".join("?" for _ in cols)
     dst.execute(f'CREATE TABLE "{table_rename or table}" ({cols_sql})')
     dst.executemany(
         f'INSERT INTO "{table_rename or table}" ({cols_sql}) VALUES ({placeholders})',
-        rows,
+        [tuple(r[i] for i in keep_idx) for r in rows],
     )
     return len(rows)
 
@@ -60,7 +63,8 @@ def main() -> int:
         src.row_factory = None
         total = {}
         for t in BOT_TABLES:
-            total[t] = copy_table(src, dst, t)
+            drop = ("question_photo", "options_photos") if t == "questions" else ()
+            total[t] = copy_table(src, dst, t, drop_columns=drop)
         for t in QURAN_TABLES:
             total[t] = copy_table(src2, dst, t)
         dst.commit()

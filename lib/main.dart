@@ -13,9 +13,10 @@ class QuranExamApp extends StatelessWidget {
     return MaterialApp(
       title: 'اختبارات قالون',
       debugShowCheckedModeBanner: false,
+      locale: const Locale('ar'),
+      supportedLocales: const [Locale('ar')],
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-        fontFamilyFallback: const ['Noto Naskh Arabic'],
         useMaterial3: true,
       ),
       home: const HomeScreen(),
