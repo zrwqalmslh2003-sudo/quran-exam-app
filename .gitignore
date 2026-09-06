@@ -3,4 +3,4 @@
 .flutter-plugins
 .flutter-plugins-dependencies
 build/
-*.log
+*.log.github/workflows/build.yml
