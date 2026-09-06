@@ -69,11 +69,11 @@ class _ExamScreenState extends State<ExamScreen> {
     final correct = _selected == ayah.chapterId;
     final tafseer = ayah.tafseer;
     final tail = tafseer != null && tafseer.isNotEmpty
-        ? '\n\n${tafseer.length > 180 ? tafseer.substring(0, 180) + '…' : tafseer}'
+        ? '\n\n${tafseer.length > 180 ? '${tafseer.substring(0, 180)}…' : tafseer}'
         : '';
     return correct
-        ? 'صحيح! ✅  ${ayah.surahName}' + tail
-        : 'خطأ ❌  الإجابة الصحيحة: ${ayah.surahName}' + tail;
+        ? 'صحيح! ✅  ${ayah.surahName}$tail'
+        : 'خطأ ❌  الإجابة الصحيحة: ${ayah.surahName}$tail';
   }
 
   @override

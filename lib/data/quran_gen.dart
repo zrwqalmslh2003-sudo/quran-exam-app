@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:sqflite/sqflite.dart';
 
 class Quarter {
@@ -38,7 +37,6 @@ class SurahPick {
 
 class QuranGenerator {
   final Database db;
-  final Random _rng = Random();
 
   QuranGenerator(this.db);
 
@@ -49,7 +47,7 @@ class QuranGenerator {
 
     if (quarterId != null) {
       final q = quarters.firstWhere((e) => e.id == quarterId,
-          orElse: () => Quarter(0, '', '', 0, 0));
+          orElse: () => const Quarter(0, '', '', 0, 0));
       if (q.id != 0) {
         clauses.add('v.group_id BETWEEN ? AND ?');
         args.addAll([q.hizbStart, q.hizbEnd]);
@@ -87,7 +85,7 @@ class QuranGenerator {
       int excludeId, int limit, int? quarterId) async {
     if (quarterId != null) {
       final q = quarters.firstWhere((e) => e.id == quarterId,
-          orElse: () => Quarter(0, '', '', 0, 0));
+          orElse: () => const Quarter(0, '', '', 0, 0));
       if (q.id == 0) return [];
       final rows = await db.rawQuery(
         'SELECT DISTINCT c.id, c.name FROM chapters c '

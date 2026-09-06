@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../data/db.dart';
 import '../data/quran_gen.dart';
 import 'exam.dart';
 
