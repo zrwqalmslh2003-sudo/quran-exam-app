@@ -1,0 +1,6 @@
+# Flutter/Dart tool signatures
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+*.log
