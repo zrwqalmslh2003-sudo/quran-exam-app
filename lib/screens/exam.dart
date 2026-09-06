@@ -118,7 +118,7 @@ class _ExamScreenState extends State<ExamScreen> {
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: _OptionTile(
                 option: o,
-                selected: _selected == o.id,
+                selected: _selected,
                 revealed: _revealed,
                 correct: o.id == ayah.chapterId,
                 onTap: () => _choose(o),
@@ -166,8 +166,7 @@ class _OptionTile extends StatelessWidget {
         side: borderColor != null ? BorderSide(color: borderColor, width: 2) : BorderSide.none,
       ),
       child: ListTile(
-        title: Text(option.name),
-        textAlign: TextAlign.center,
+        title: Text(option.name, textAlign: TextAlign.center),
         onTap: revealed ? null : onTap,
         trailing: revealed && correct
             ? const Icon(Icons.check_circle, color: Colors.green)

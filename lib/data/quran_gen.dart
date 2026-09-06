@@ -1,6 +1,5 @@
 import 'dart:math';
 import 'package:sqflite/sqflite.dart';
-import 'data/db.dart';
 
 class Quarter {
   final int id;
