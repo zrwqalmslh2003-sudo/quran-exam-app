@@ -1,0 +1,14 @@
+{
+  "plugin": "org.smartide.plugin.flutter",
+  "run": "flutter build apk --debug --target-platform android-arm64 && install-apk build/app/outputs/flutter-apk/app-debug.apk",
+  "intelligence": {
+    ".json": {
+      "enabled": true,
+      "run": "vscode-json-language-server --stdio"
+    },
+    ".dart": {
+      "enabled": true,
+      "run": "dart language-server --protocol=lsp --client-id=smartide"
+    }
+  }
+}
