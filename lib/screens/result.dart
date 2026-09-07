@@ -19,7 +19,7 @@ class ResultScreen extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(title: Text('النتيجة', maxLines: 1, overflow: TextOverflow.ellipsis), automaticallyImplyLeading: false),
+        appBar: AppBar(title: const Text('النتيجة', maxLines: 1, overflow: TextOverflow.ellipsis), automaticallyImplyLeading: false),
         body: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
           child: Column(children: [

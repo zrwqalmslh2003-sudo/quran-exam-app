@@ -101,7 +101,7 @@ class _QuranSetupScreenState extends State<QuranSetupScreen> {
                 onSelectionChanged: (value) => setState(() => _size = value.first),
                 showSelectedIcon: false,
                 style: ButtonStyle(
-                  shape: MaterialStatePropertyAll(
+                  shape: WidgetStatePropertyAll(
                     RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),

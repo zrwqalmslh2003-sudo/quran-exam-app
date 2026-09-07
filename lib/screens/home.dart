@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../data/quran_gen.dart';
 import 'catalog.dart';
-import 'exam.dart';
 import 'random_setup.dart';
 import 'quran_setup.dart';
 
@@ -59,8 +58,8 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 30, 20, 12),
+              const SliverPadding(
+                padding: EdgeInsets.fromLTRB(20, 30, 20, 12),
                 sliver: SliverToBoxAdapter(
                   child: _SectionHeader(
                     title: 'اختبارات القرآن',

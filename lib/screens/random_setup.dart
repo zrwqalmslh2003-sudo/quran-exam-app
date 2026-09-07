@@ -51,7 +51,7 @@ class _RandomSetupScreenState extends State<RandomSetupScreen> {
           selected: {_size},
           onSelectionChanged: (s) => setState(() => _size = s.first),
           showSelectedIcon: false,
-          style: ButtonStyle(shape: MaterialStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)))),
+          style: ButtonStyle(shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)))),
         ),
       );
 
