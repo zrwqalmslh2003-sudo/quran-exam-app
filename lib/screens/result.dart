@@ -50,5 +50,5 @@ class _StatCard extends StatelessWidget {
   final String label;
   const _StatCard({required this.icon, required this.value, required this.label});
   @override
-  Widget build(BuildContext context) => Card(child: Padding(padding: const EdgeInsets.symmetric(vertical: 15), child: Column(children: [Icon(icon, color: Theme.of(context).colorScheme.primary), const SizedBox(height: 7), Text(value, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900)), const SizedBox(height: 2), Text(label, style: Theme.of(context).textTheme.bodySmall)]));
+  Widget build(BuildContext context) => Card(child: Padding(padding: const EdgeInsets.symmetric(vertical: 15), child: Column(children: [Icon(icon, color: Theme.of(context).colorScheme.primary), const SizedBox(height: 7), Text(value, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900)), const SizedBox(height: 2), Text(label, style: Theme.of(context).textTheme.bodySmall)])));
 }

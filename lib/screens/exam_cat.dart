@@ -142,7 +142,7 @@ class _ExamCatScreenState extends State<ExamCatScreen> {
         Expanded(child: Text(opt, style: const TextStyle(fontSize: 16, height: 1.45, fontWeight: FontWeight.w600))),
         if (icon != null) Icon(icon, color: border),
       ])),
-    );
+    ));
   }
 
   static const _letters = ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح', 'ط', 'ي', 'ك', 'ل', 'م', 'ن'];
@@ -157,6 +157,6 @@ class _FeedbackCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Card(color: correct ? Colors.green.withOpacity(.09) : Colors.red.withOpacity(.08), child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [Icon(correct ? Icons.check_circle_rounded : Icons.info_rounded, color: correct ? Colors.green : Colors.redAccent), const SizedBox(width: 8), Expanded(child: Text(text, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)))]),
-        if (explanation != null && explanation!.isNotEmpty) ...[const Divider(height: 24), Text('الشرح', style: const TextStyle(fontWeight: FontWeight.w800)), const SizedBox(height: 5), Text(explanation!, style: const TextStyle(height: 1.6))],
-      ]));
+        if (explanation != null && explanation!.isNotEmpty) ...[const Divider(height: 24), const Text('الشرح', style: TextStyle(fontWeight: FontWeight.w800)), const SizedBox(height: 5), Text(explanation!, style: const TextStyle(height: 1.6))],
+      ])));
 }

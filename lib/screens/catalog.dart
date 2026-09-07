@@ -144,7 +144,7 @@ class _GridCard extends StatelessWidget {
   Widget build(BuildContext context) => Card(child: InkWell(borderRadius: BorderRadius.circular(20), onTap: onTap, child: Padding(padding: const EdgeInsets.all(15), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
         Container(width: 52, height: 52, decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(16)), child: Center(child: Text(emoji, style: const TextStyle(fontSize: 27)))),
         Row(children: [Expanded(child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15))), const Icon(Icons.arrow_back_ios_new_rounded, size: 14)]),
-      ])));
+      ]))));
 }
 
 class _ListCard extends StatelessWidget {
@@ -171,6 +171,6 @@ class _TopicCard extends StatelessWidget {
       const SizedBox(width: 14),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)), if (description != null && description!.isNotEmpty) ...[const SizedBox(height: 4), Text(description!, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall)], const SizedBox(height: 8), Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4), decoration: BoxDecoration(color: scheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(8)), child: Text(count > 0 ? '$count سؤالاً' : 'فارغ', style: Theme.of(context).textTheme.labelSmall))])),
       Icon(Icons.play_circle_outline_rounded, color: count > 0 ? scheme.primary : scheme.outline),
-    ])));
+    ]))));
   }
 }

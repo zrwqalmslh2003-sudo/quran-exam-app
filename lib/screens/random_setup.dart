@@ -22,7 +22,7 @@ class _RandomSetupScreenState extends State<RandomSetupScreen> {
             if (snap.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
             final cats = snap.data ?? const [];
             return ListView(padding: const EdgeInsets.fromLTRB(20, 18, 20, 30), children: [
-              _IntroCard(),
+              const _IntroCard(),
               const SizedBox(height: 22),
               const Text('عدد الأسئلة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               const SizedBox(height: 8),
@@ -49,7 +49,7 @@ class _RandomSetupScreenState extends State<RandomSetupScreen> {
       Container(width: 48, height: 48, decoration: BoxDecoration(color: scheme.primaryContainer, borderRadius: BorderRadius.circular(14)), child: Icon(icon, color: scheme.onPrimaryContainer)),
       const SizedBox(width: 13), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)), const SizedBox(height: 3), Text(subtitle, style: Theme.of(context).textTheme.bodySmall)])),
       Icon(Icons.arrow_back_ios_new_rounded, size: 16, color: scheme.outline),
-    ]))));
+    ])))));
   }
 
   Future<void> _start(int? categoryId, String name) async {

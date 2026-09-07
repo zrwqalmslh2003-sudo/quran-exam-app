@@ -52,8 +52,8 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
             ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 28, 20, 10),
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(20, 28, 20, 10),
               sliver: SliverToBoxAdapter(child: _SectionTitle(title: 'اختبارات الآيات', subtitle: 'اختبر معرفتك بمواضع السور')),
             ),
             SliverPadding(

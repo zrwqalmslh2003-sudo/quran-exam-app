@@ -103,12 +103,12 @@ class _OptionTile extends StatelessWidget {
       CircleAvatar(radius: 20, backgroundColor: isSelected ? scheme.primary : scheme.surfaceContainerHighest, child: Icon(Icons.menu_book_rounded, size: 19, color: isSelected ? scheme.onPrimary : scheme.onSurfaceVariant)),
       const SizedBox(width: 12), Expanded(child: Text(option.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16))),
       if (revealed) Icon(correct ? Icons.check_circle_rounded : isSelected ? Icons.cancel_rounded : Icons.radio_button_unchecked, color: correct ? Colors.green : isSelected ? Colors.redAccent : scheme.outline),
-    ])));
+    ]))));
   }
 }
 
 class _EndState extends StatelessWidget {
   const _EndState();
   @override
-  Widget build(BuildContext context) => Center(child: Padding(padding: const EdgeInsets.all(30), child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.verified_rounded, size: 62, color: Theme.of(context).colorScheme.primary), const SizedBox(height: 14), const Text('انتهت الآيات المتاحة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)), const SizedBox(height: 6), const Text('لا توجد آيات أخرى في هذا النطاق.', textAlign: TextAlign.center)]));
+  Widget build(BuildContext context) => Center(child: Padding(padding: const EdgeInsets.all(30), child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.verified_rounded, size: 62, color: Theme.of(context).colorScheme.primary), const SizedBox(height: 14), const Text('انتهت الآيات المتاحة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)), const SizedBox(height: 6), const Text('لا توجد آيات أخرى في هذا النطاق.', textAlign: TextAlign.center)])));
 }
