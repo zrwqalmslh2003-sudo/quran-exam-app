@@ -9,14 +9,15 @@ import '../models/question.dart';
 class AppDatabase {
   static Database? _db;
 
-  /// Returns the app's SQLite database, copying `assets/app_data.sqlite`
-  /// into the documents directory on first run.
+  /// Returns the app's SQLite database, copying `assets/app_data.json`
+  /// (bundled under a FlutLab-friendly name) into the documents directory
+  /// as `app_data.sqlite` on first run.
   static Future<Database> get instance async {
     if (_db != null) return _db!;
     final dir = await getApplicationDocumentsDirectory();
     final dbPath = join(dir.path, 'app_data.sqlite');
     if (!await File(dbPath).exists()) {
-      final data = await rootBundle.load('assets/app_data.sqlite');
+      final data = await rootBundle.load('assets/app_data.json');
       await File(dbPath).writeAsBytes(data.buffer.asUint8List(), flush: true);
     }
     _db = await openDatabase(dbPath);
