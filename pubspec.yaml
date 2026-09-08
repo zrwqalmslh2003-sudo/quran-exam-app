@@ -9,9 +9,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  sqflite: ^2.3.0
-  path_provider: ^2.1.0
-  path: ^1.9.0
   share_plus: ^7.2.0
 
 dev_dependencies:
@@ -22,4 +19,10 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/app_data.json
+    - assets/categories.json
+    - assets/subcategories.json
+    - assets/topics.json
+    - assets/questions.json
+    - assets/chapters.json
+    - assets/verses.json
+    - assets/tafseer.json

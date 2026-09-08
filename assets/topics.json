@@ -1,0 +1,149 @@
+[
+  {
+    "id": 1,
+    "name": "الأسئلة أصول الرواية",
+    "description": "أصول الرواية",
+    "is_active": 1,
+    "subcategory_id": 1
+  },
+  {
+    "id": 2,
+    "name": "أسئلة أحكام المد ",
+    "description": "أصول الرواية",
+    "is_active": 1,
+    "subcategory_id": 1
+  },
+  {
+    "id": 3,
+    "name": "آداب حملة القرآن 📚",
+    "description": "آداب",
+    "is_active": 1,
+    "subcategory_id": 2
+  },
+  {
+    "id": 4,
+    "name": "جديد : أحكام رسم الهمزات",
+    "description": "الرسم القرآني",
+    "is_active": 1,
+    "subcategory_id": 3
+  },
+  {
+    "id": 5,
+    "name": "أحكام رسم الهمزات جزء 2",
+    "description": "الرسم القرآني",
+    "is_active": 1,
+    "subcategory_id": 3
+  },
+  {
+    "id": 6,
+    "name": "باب الحذف: حذف الألف الجزء الأول",
+    "description": "الرسم القرآني",
+    "is_active": 1,
+    "subcategory_id": 3
+  },
+  {
+    "id": 7,
+    "name": " باب حذف الألف الجزء الثاني ",
+    "description": "الرسم القرآني",
+    "is_active": 1,
+    "subcategory_id": 3
+  },
+  {
+    "id": 8,
+    "name": "باب حذف الياء والواو",
+    "description": "الرسم القرآني",
+    "is_active": 1,
+    "subcategory_id": 3
+  },
+  {
+    "id": 9,
+    "name": "باب الزيادة (الألف والواو الياء) ",
+    "description": "أسئلة في باب الزيادة",
+    "is_active": 1,
+    "subcategory_id": 3
+  },
+  {
+    "id": 10,
+    "name": "اختبار متشابهات جزء عمّ 💭",
+    "description": " أسئلة المتشابهات",
+    "is_active": 1,
+    "subcategory_id": 4
+  },
+  {
+    "id": 11,
+    "name": "اختبار متشابهات جزء تبارك 💭",
+    "description": " ",
+    "is_active": 1,
+    "subcategory_id": 4
+  },
+  {
+    "id": 12,
+    "name": "اختبار جزء قد سمع 💭",
+    "description": " ",
+    "is_active": 1,
+    "subcategory_id": 4
+  },
+  {
+    "id": 13,
+    "name": "اختبار متشابهات جزء قال فما خطبكم (الذاريات) 💭",
+    "description": " ",
+    "is_active": 1,
+    "subcategory_id": 4
+  },
+  {
+    "id": 14,
+    "name": "اختبار متشابهات جزء الأحقاف 💭",
+    "description": " ",
+    "is_active": 1,
+    "subcategory_id": 4
+  },
+  {
+    "id": 15,
+    "name": "اختبار جزء إليه يُرد (الشورى-الأحقاف) 💭",
+    "description": " ",
+    "is_active": 1,
+    "subcategory_id": 4
+  },
+  {
+    "id": 16,
+    "name": "اختبار جزء فمن أظلم (الزمر - فصلت) 💭",
+    "description": " ",
+    "is_active": 1,
+    "subcategory_id": 4
+  },
+  {
+    "id": 17,
+    "name": "اختبار جزء فمن أظلم جزء ثاني (غافر - فصلت) 💭",
+    "description": null,
+    "is_active": 1,
+    "subcategory_id": 4
+  },
+  {
+    "id": 18,
+    "name": "اختبار جزء يس (يس - الزمر) 💭",
+    "description": null,
+    "is_active": 1,
+    "subcategory_id": 4
+  },
+  {
+    "id": 19,
+    "name": "اختبار متشابهات ربع يس جزء ثاني 💭",
+    "description": null,
+    "is_active": 1,
+    "subcategory_id": 4
+  },
+  {
+    "id": 21,
+    "name": "🔥 جديد: أحكام الراءات",
+    "description": null,
+    "is_active": 1,
+    "subcategory_id": 1
+  },
+  {
+    "id": 23,
+    "name": "الكنوز الأثرية الجزء الأول",
+    "description": null,
+    "is_active": 1,
+    "subcategory_id": 8
+  }
+]

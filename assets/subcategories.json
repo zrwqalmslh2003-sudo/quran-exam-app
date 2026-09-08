@@ -1,0 +1,50 @@
+[
+  {
+    "id": 1,
+    "category_id": 1,
+    "name": "أصول رواية قالون",
+    "emoji": "📜",
+    "sort_order": 1,
+    "is_active": 1
+  },
+  {
+    "id": 2,
+    "category_id": 1,
+    "name": "آداب حملة القرآن",
+    "emoji": "📚",
+    "sort_order": 2,
+    "is_active": 1
+  },
+  {
+    "id": 3,
+    "category_id": 2,
+    "name": "الرسم القرآني",
+    "emoji": "🖋️",
+    "sort_order": 3,
+    "is_active": 1
+  },
+  {
+    "id": 4,
+    "category_id": 3,
+    "name": "جديد 🔥: متشابهات الربع الأخير",
+    "emoji": "🔍",
+    "sort_order": 4,
+    "is_active": 1
+  },
+  {
+    "id": 7,
+    "category_id": 5,
+    "name": "الجزء الثلاثون",
+    "emoji": "📖",
+    "sort_order": 0,
+    "is_active": 1
+  },
+  {
+    "id": 8,
+    "category_id": 6,
+    "name": "الكنوز الأثرية",
+    "emoji": "🏺",
+    "sort_order": 5,
+    "is_active": 1
+  }
+]

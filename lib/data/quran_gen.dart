@@ -1,4 +1,6 @@
-import 'package:sqflite/sqflite.dart';
+import 'dart:math';
+
+import 'app_data.dart';
 
 class Quarter {
   final int id;
@@ -36,43 +38,40 @@ class SurahPick {
 }
 
 class QuranGenerator {
-  final Database db;
+  final AppDataStore store;
 
-  QuranGenerator(this.db);
+  QuranGenerator(this.store);
+
+  Quarter? _quarter(int? quarterId) {
+    if (quarterId == null) return null;
+    for (final q in quarters) {
+      if (q.id == quarterId) return q;
+    }
+    return null;
+  }
 
   /// Returns a random ayah, optionally limited to a quarter and excluding ids.
   Future<Ayah?> randomAyah({Set<int>? excludeIds, int? quarterId}) async {
-    final clauses = <String>[];
-    final args = <Object?>[];
-
-    if (quarterId != null) {
-      final q = quarters.firstWhere((e) => e.id == quarterId,
-          orElse: () => const Quarter(0, '', '', 0, 0));
-      if (q.id != 0) {
-        clauses.add('v.group_id BETWEEN ? AND ?');
-        args.addAll([q.hizbStart, q.hizbEnd]);
+    final q = _quarter(quarterId);
+    final candidates = <Map<String, Object?>>[];
+    for (final v in store.table('verses')) {
+      if (q != null) {
+        final g = v['group_id'];
+        if (g is! int || g < q.hizbStart || g > q.hizbEnd) continue;
       }
+      if (excludeIds != null && excludeIds.contains(v['id'])) continue;
+      candidates.add(v);
     }
+    if (candidates.isEmpty) return null;
 
-    if (excludeIds != null && excludeIds.isNotEmpty) {
-      clauses.add('v.id NOT IN (${List.filled(excludeIds.length, '?').join(',')})');
-      args.addAll(excludeIds);
-    }
-
-    final where = clauses.isEmpty ? '' : 'WHERE ${clauses.join(' AND ')}';
-    final rows = await db.rawQuery(
-      'SELECT v.id, v.chapter_id, c.name AS surah_name, v.number, v.content '
-      'FROM verses v JOIN chapters c ON v.chapter_id = c.id '
-      '$where ORDER BY RANDOM() LIMIT 1',
-      args,
-    );
-    if (rows.isEmpty) return null;
-    final r = rows.first;
-    final tafseer = await _tafseer(r['chapter_id'] as int, r['number'] as int);
+    final r = candidates[Random().nextInt(candidates.length)];
+    final chapterId = r['chapter_id'] as int;
+    final surahName = _surahName(chapterId);
+    final tafseer = _tafseer(chapterId, r['number'] as int);
     return Ayah(
       r['id'] as int,
-      r['chapter_id'] as int,
-      r['surah_name'] as String,
+      chapterId,
+      surahName,
       r['number'] as int,
       r['content'] as String,
       tafseer,
@@ -83,33 +82,57 @@ class QuranGenerator {
   /// the same quarter as the answer. Returns empty if a quarter can't fill.
   Future<List<SurahPick>> randomSurahs(
       int excludeId, int limit, int? quarterId) async {
-    if (quarterId != null) {
-      final q = quarters.firstWhere((e) => e.id == quarterId,
-          orElse: () => const Quarter(0, '', '', 0, 0));
-      if (q.id == 0) return [];
-      final rows = await db.rawQuery(
-        'SELECT DISTINCT c.id, c.name FROM chapters c '
-        'JOIN verses v ON v.chapter_id = c.id '
-        'WHERE v.group_id BETWEEN ? AND ? AND c.id != ? '
-        'ORDER BY RANDOM() LIMIT ?',
-        [q.hizbStart, q.hizbEnd, excludeId, limit],
-      );
-      return rows.map((r) => SurahPick(r['id'] as int, r['name'] as String)).toList();
+    final q = _quarter(quarterId);
+    if (quarterId != null && q == null) return [];
+
+    final chapters = store.table('chapters');
+    final rand = Random();
+    if (q != null) {
+      final inRange = <int>{};
+      for (final v in store.table('verses')) {
+        final g = v['group_id'];
+        if (g is int && g >= q.hizbStart && g <= q.hizbEnd) {
+          final c = v['chapter_id'];
+          if (c is int) inRange.add(c);
+        }
+      }
+      final pool = chapters
+          .where((c) =>
+              c['id'] is int &&
+              c['id'] != excludeId &&
+              inRange.contains(c['id']))
+          .toList()
+        ..shuffle(rand);
+      return pool
+          .take(limit)
+          .map((r) => SurahPick(r['id'] as int, r['name'] as String))
+          .toList();
     }
-    final rows = await db.rawQuery(
-      'SELECT id, name FROM chapters WHERE id != ? ORDER BY RANDOM() LIMIT ?',
-      [excludeId, limit],
-    );
-    return rows.map((r) => SurahPick(r['id'] as int, r['name'] as String)).toList();
+
+    final pool = chapters.where((c) => c['id'] != excludeId).toList()
+      ..shuffle(rand);
+    return pool
+        .take(limit)
+        .map((r) => SurahPick(r['id'] as int, r['name'] as String))
+        .toList();
   }
 
-  Future<String?> _tafseer(int chapterId, int verseNumber) async {
-    final rows = await db.query('tafseer',
-        where: 'chapter_id = ? AND verse_num = ?',
-        whereArgs: [chapterId, verseNumber],
-        limit: 1);
-    if (rows.isEmpty) return null;
-    return (rows.first['text'] as String).trim();
+  String _surahName(int chapterId) {
+    for (final c in store.table('chapters')) {
+      if (c['id'] == chapterId) return c['name'] as String? ?? '';
+    }
+    return '';
+  }
+
+  String? _tafseer(int chapterId, int verseNumber) {
+    for (final t in store.table('tafseer')) {
+      if (t['chapter_id'] == chapterId && t['verse_num'] == verseNumber) {
+        final txt = t['text'];
+        if (txt is String) return txt.trim();
+        return null;
+      }
+    }
+    return null;
   }
 }
 
