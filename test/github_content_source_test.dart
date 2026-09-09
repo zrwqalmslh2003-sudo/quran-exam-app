@@ -128,10 +128,10 @@ void main() {
 
     test('schemaVersion مختلف ⇒ FormatException', () async {
       // منظّم عقد v2 مستقبلي يُنتج schemaVersion أعلى؛ حارس ManifestService يرفضه.
-      final bad = ContentManifest(
+      final bad = const ContentManifest(
         schemaVersion: 2,
         contentVersion: 2,
-        exams: const [
+        exams: [
           ManifestExam(
             id: 'quran_qalon',
             version: 9,
