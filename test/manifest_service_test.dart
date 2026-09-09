@@ -2,6 +2,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:quran_exam_app/data/content_manifest.dart';
 import 'package:quran_exam_app/data/manifest_service.dart';
 
+Map<String, Object?> _noDupFixture() => {
+      'id': 'quran_qalon',
+      'version': 3,
+      'title': 'اختبارات قالون',
+      'file': 'exams/quran_qalon.json',
+    };
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -69,14 +76,12 @@ void main() {
     });
 
     test('معرف مكرر يُرفض', () {
+      final exam = _noDupFixture();
       expect(
         () => ContentManifest.fromJson({
           'schemaVersion': 1,
           'contentVersion': 1,
-          'exams': [
-            good().toJson()['exams']![0],
-            good().toJson()['exams']![0],
-          ],
+          'exams': [exam, exam],
         }),
         throwsFormatException,
       );
