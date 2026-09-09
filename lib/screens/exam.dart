@@ -31,9 +31,7 @@ class _ExamScreenState extends State<ExamScreen> {
 
   static const _background = Color(0xFF081126);
   static const _surface = Color(0xFF141E3B);
-  static const _surface2 = Color(0xFF1B274A);
   static const _purple = Color(0xFF7B4DFF);
-  static const _blue = Color(0xFF2D86FF);
 
   @override
   void initState() {
