@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:sqflite/sqflite.dart';
 
 import '../models/question.dart';
@@ -208,6 +210,8 @@ class SQLiteExamRepository implements ExamRepository, TableSource {
 
   @override
   Future<List<Question>> randomQuestions(int count, {int? categoryId}) async {
+    final remote = await _tryActiveRemoteQuestions(count);
+    if (remote != null) return remote;
     try {
       return QuestionPicker.pick(
         categories: _cache['categories'] ?? const [],
@@ -282,6 +286,49 @@ class SQLiteExamRepository implements ExamRepository, TableSource {
         whereArgs: [examId, version],
       );
     });
+  }
+
+  /// يعيد أسئلة الاختبار البعيد النشط (المخزّن محلياً في SQLite) حتى [count]،
+  /// أو `null` عند غيابه أو فشل قراءته/تحليله — فيقع المتصل على المصدر المحلي.
+  /// لا شبكة هنا أبداً: القراءة من قاعدة محلية فقط (Offline-first).
+  Future<List<Question>?> _tryActiveRemoteQuestions(int count) async {
+    try {
+      final rows = await _db.query(
+        'remote_exams',
+        columns: ['payload'],
+        where: 'is_active = 1',
+        orderBy: 'activated_at DESC',
+      );
+      if (rows.isEmpty) return null;
+      final payload = rows.first['payload'];
+      if (payload is! String || payload.isEmpty) return null;
+      final questions = _parseRemoteQuestions(payload);
+      return questions.take(count).toList();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// يحلل حمولة اختبار بعيد (عقد schemaVersion 1) إلى أسئلة المحرك.
+  /// الحمولة المخزّنة لا تُعدّل ولا تُحذف مهما كان الفشل.
+  List<Question> _parseRemoteQuestions(String rawPayload) {
+    final decoded = jsonDecode(rawPayload);
+    if (decoded is! Map<String, Object?>) {
+      throw const FormatException('حمولة الاختبار البعيد يجب أن تكون كائناً JSON');
+    }
+    final questions = decoded['questions'];
+    if (questions is! List || questions.isEmpty) {
+      throw const FormatException('حمولة الاختبار البعيد بلا أسئلة');
+    }
+    final out = <Question>[];
+    for (var i = 0; i < questions.length; i++) {
+      final item = questions[i];
+      if (item is! Map) {
+        throw const FormatException('سؤال بعيد تالف');
+      }
+      out.add(Question.fromRemote(item.cast<String, Object?>(), i));
+    }
+    return out;
   }
 
   Future<String?> manifestMetaValue(String key) async {
