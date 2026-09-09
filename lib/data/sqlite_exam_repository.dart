@@ -9,6 +9,18 @@ import 'quran_gen.dart';
 import 'question_picker.dart';
 import 'table_source.dart';
 
+class RemoteExamPayload {
+  const RemoteExamPayload({
+    required this.examId,
+    required this.version,
+    required this.payload,
+  });
+
+  final String examId;
+  final int version;
+  final String payload;
+}
+
 /// SQLite هو المصدر الأساسي بعد التهيئة.
 ///
 /// - التهيئة الأولى (Bootstrap): تُنسخ بيانات JSON المضمّنة إلى SQLite مرة واحدة.
@@ -210,7 +222,7 @@ class SQLiteExamRepository implements ExamRepository, TableSource {
 
   @override
   Future<List<Question>> randomQuestions(int count, {int? categoryId}) async {
-    final remote = await _tryActiveRemoteQuestions(count);
+    final remote = await _tryActiveRemoteQuestions(count, categoryId: categoryId);
     if (remote != null) return remote;
     try {
       return QuestionPicker.pick(
@@ -288,15 +300,73 @@ class SQLiteExamRepository implements ExamRepository, TableSource {
     });
   }
 
+  /// Stores and activates a complete, already validated manifest update in one
+  /// transaction. Existing active content remains active if any write fails.
+  Future<void> applyRemoteUpdate({
+    required List<RemoteExamPayload> exams,
+    required int contentVersion,
+  }) async {
+    await _db.transaction((txn) async {
+      for (final exam in exams) {
+        await txn.insert(
+          'remote_exams',
+          {
+            'exam_id': exam.examId,
+            'version': exam.version,
+            'payload': exam.payload,
+            'is_active': 0,
+            'created_at': DateTime.now().toIso8601String(),
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+
+      for (final exam in exams) {
+        await txn.update(
+          'remote_exams',
+          {'is_active': 0},
+          where: 'exam_id = ?',
+          whereArgs: [exam.examId],
+        );
+        await txn.update(
+          'remote_exams',
+          {
+            'is_active': 1,
+            'activated_at': DateTime.now().toIso8601String(),
+          },
+          where: 'exam_id = ? AND version = ?',
+          whereArgs: [exam.examId, exam.version],
+        );
+      }
+
+      await txn.insert(
+        'content_meta',
+        {
+          'key': 'manifest_content_version',
+          'value': contentVersion.toString(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    });
+  }
+
   /// يعيد أسئلة الاختبار البعيد النشط (المخزّن محلياً في SQLite) حتى [count]،
   /// أو `null` عند غيابه أو فشل قراءته/تحليله — فيقع المتصل على المصدر المحلي.
   /// لا شبكة هنا أبداً: القراءة من قاعدة محلية فقط (Offline-first).
-  Future<List<Question>?> _tryActiveRemoteQuestions(int count) async {
+  Future<List<Question>?> _tryActiveRemoteQuestions(
+    int count, {
+    int? categoryId,
+  }) async {
+    // quran_general is the only remote random exam until v1.6 introduces
+    // explicit catalog/exam selection. A category-scoped request must use the
+    // local picker because this payload has no category contract yet.
+    if (categoryId != null) return null;
     try {
       final rows = await _db.query(
         'remote_exams',
         columns: ['payload'],
-        where: 'is_active = 1',
+        where: 'exam_id = ? AND is_active = 1',
+        whereArgs: ['quran_general'],
         orderBy: 'activated_at DESC',
       );
       if (rows.isEmpty) return null;

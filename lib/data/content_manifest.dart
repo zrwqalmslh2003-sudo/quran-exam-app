@@ -35,15 +35,26 @@ class ManifestExam {
       throw const FormatException(
           'manifest exam: file مسار JSON صالح مثل exams/quran_qalon.json');
     }
+    final category = json['category'];
+    if (category != null && category is! String) {
+      throw const FormatException('manifest exam: category يجب أن يكون نصاً');
+    }
+    final updatedAt = json['updatedAt'];
+    if (updatedAt != null && updatedAt is! String) {
+      throw const FormatException('manifest exam: updatedAt يجب أن يكون نصاً');
+    }
     final count = json['questionCount'];
+    if (count != null && count is! int) {
+      throw const FormatException('manifest exam: questionCount يجب أن يكون عدداً');
+    }
     return ManifestExam(
       id: id,
       version: version,
       title: title,
       file: file,
-      category: json['category'] as String?,
+      category: category as String?,
       questionCount: count is int && count >= 0 ? count : null,
-      updatedAt: json['updatedAt'] as String?,
+      updatedAt: updatedAt as String?,
     );
   }
 
@@ -107,17 +118,24 @@ class ContentManifest {
     final exams = <ManifestExam>[];
     final seen = <String>{};
     for (final item in items) {
-      final exam = ManifestExam.fromJson((item as Map).cast<String, Object?>());
+      if (item is! Map) {
+        throw const FormatException('manifest: كل عنصر في exams يجب أن يكون كائناً');
+      }
+      final exam = ManifestExam.fromJson(item.cast<String, Object?>());
       if (!seen.add(exam.id)) {
         throw FormatException('manifest: معرف مكرر "${exam.id}"');
       }
       exams.add(exam);
     }
+    final updatedAt = raw['updatedAt'];
+    if (updatedAt != null && updatedAt is! String) {
+      throw const FormatException('manifest: updatedAt يجب أن يكون نصاً');
+    }
     return ContentManifest(
       schemaVersion: schema,
       contentVersion: contentVersion,
       exams: exams,
-      updatedAt: raw['updatedAt'] as String?,
+      updatedAt: updatedAt as String?,
     );
   }
 

@@ -63,15 +63,16 @@ class QuestionPicker {
       return catOfSub[s];
     }
 
+    final eligibleQuestions = questions.where(eligible).toList();
+
     if (categoryId != null) {
-      final pool = questions.where((q) => eligible(q) && categoryOf(q) == categoryId).toList()
+      final pool = eligibleQuestions.where((q) => categoryOf(q) == categoryId).toList()
         ..shuffle(rand);
       return pool.take(count).map(Question.fromRow).toList();
     }
 
     final avail = <int, int>{};
-    for (final q in questions) {
-      if (!eligible(q)) continue;
+    for (final q in eligibleQuestions) {
       final c = categoryOf(q);
       if (c == null) continue;
       avail[c] = (avail[c] ?? 0) + 1;
@@ -91,7 +92,7 @@ class QuestionPicker {
       final available = avail[cats[i]]!;
       if (limit > available) limit = available;
       if (limit <= 0) continue;
-      final pool = questions.where((q) => eligible(q) && categoryOf(q) == cats[i]).toList()
+      final pool = eligibleQuestions.where((q) => categoryOf(q) == cats[i]).toList()
         ..shuffle(rand);
       for (final r in pool.take(limit)) {
         out.add(Question.fromRow(r));
@@ -100,13 +101,8 @@ class QuestionPicker {
     }
 
     if (out.length < target) {
-      final fill = questions
-          .where((q) {
-            final options = q['options'];
-            return options is String &&
-                options.isNotEmpty &&
-                !usedIds.contains(q['id']);
-          })
+      final fill = eligibleQuestions
+          .where((q) => !usedIds.contains(q['id']))
           .toList()
         ..shuffle(rand);
       final need = target - out.length;

@@ -53,13 +53,22 @@ class GithubContentSource {
   static const _timeout = Duration(seconds: 15);
 
   /// يجلب نص الملف ويعيده؛ أي استجابة غير 200 ترمى [ContentFetchException].
-  Future<String> fetchText(Uri url) async {
+  Future<String> fetchText(Uri url, {int maxBytes = 8 * 1024 * 1024}) async {
     final client = HttpClient();
     try {
       final request = await client.getUrl(url);
       request.headers.set(HttpHeaders.acceptHeader, 'application/json');
       final response = await request.close().timeout(_timeout);
-      final body = await response.transform(utf8.decoder).join();
+      final chunks = <List<int>>[];
+      var total = 0;
+      await for (final chunk in response) {
+        total += chunk.length;
+        if (total > maxBytes) {
+          throw ContentFetchException('حجم الاستجابة يتجاوز الحد المسموح');
+        }
+        chunks.add(chunk);
+      }
+      final body = utf8.decode(chunks.expand((chunk) => chunk).toList());
       if (response.statusCode != HttpStatus.ok) {
         throw ContentFetchException(
           'فشل جلب المحتوى (HTTP ${response.statusCode})',
@@ -75,7 +84,7 @@ class GithubContentSource {
 
   /// يجلب `manifest.json` ويحلّله مع التحقق من العقد.
   Future<ContentManifest> fetchManifest() async {
-    final raw = await fetchText(urlFor('manifest.json'));
+    final raw = await fetchText(urlFor('manifest.json'), maxBytes: 512 * 1024);
     return ContentManifest.fromJson(jsonDecode(raw));
   }
 }

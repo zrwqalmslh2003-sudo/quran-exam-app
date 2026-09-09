@@ -56,6 +56,36 @@ void main() {
     }
   });
 
+  test('randomQuestions لا تستخدم اختباراً بعيداً آخر', () async {
+    final dir = _tmpDir();
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final repo = await _openRepo(dir, 'app');
+    addTearDown(repo.close);
+    await repo.storeRemoteExam('tajweed', 1, _quranGeneralPayload.replaceAll(
+      'quran_general',
+      'tajweed',
+    ));
+    await repo.activateRemoteExam('tajweed', 1);
+
+    final store = await AppDataStore.instance;
+    final localTexts = store.table('questions').map((r) => r['text']).toSet();
+    final qs = await repo.randomQuestions(5);
+    expect(qs, isNotEmpty);
+    expect(qs.every((q) => localTexts.contains(q.text)), isTrue);
+  });
+
+  test('categoryId لا يعيد محتوى quran_general غير المصنف', () async {
+    final dir = _tmpDir();
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final repo = await _openRepo(dir, 'app');
+    addTearDown(repo.close);
+    await _activate(repo);
+
+    final qs = await repo.randomQuestions(5, categoryId: 1);
+    expect(qs, isNotEmpty);
+    expect(qs.every((q) => q.text != 'أول ما نزل من القرآن؟'), isTrue);
+  });
+
   test('randomQuestions تعود للمصدر المضمّن عند غياب اختبار بعيد نشط', () async {
     final dir = _tmpDir();
     addTearDown(() => dir.deleteSync(recursive: true));
