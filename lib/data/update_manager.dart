@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
+
 import 'content_manifest.dart';
 import 'github_content_source.dart';
 import 'sqlite_exam_repository.dart';
@@ -61,7 +63,15 @@ class UpdateManager {
     GithubContentSource source,
     ManifestExam remoteExam,
   ) async {
-    final raw = await source.fetchText(source.urlFor(remoteExam.file));
+    final bytes = await source.fetchBytes(
+      source.urlFor(remoteExam.file),
+      maxBytes: _maxExamPayloadBytes,
+    );
+    final actualHash = sha256.convert(bytes).toString();
+    if (actualHash.toLowerCase() != remoteExam.sha256) {
+      throw const FormatException('بصمة SHA-256 لا تطابق المانفيست');
+    }
+    final raw = utf8.decode(bytes);
     if (raw.length > _maxExamPayloadBytes) {
       throw const FormatException('حمولة الاختبار تتجاوز الحجم المسموح');
     }

@@ -19,6 +19,7 @@ const _local = ContentManifest(
       version: 1,
       title: 'اختبارات قالون',
       file: 'exams/quran_qalon.json',
+      sha256: '0000000000000000000000000000000000000000000000000000000000000000',
       questionCount: 520,
     ),
   ],
@@ -35,6 +36,7 @@ String manifestJson({int contentVersion = 2, int examVersion = 2}) =>
           'version': examVersion,
           'title': 'اختبارات قالون',
           'file': 'exams/quran_qalon.json',
+          'sha256': '0000000000000000000000000000000000000000000000000000000000000000',
           'questionCount': 520,
         }
       ],
@@ -67,6 +69,7 @@ void main() {
                 'version': 1,
                 'title': 't',
                 'file': 'exams/a.json',
+                'sha256': '0000000000000000000000000000000000000000000000000000000000000000',
               }
             ],
           }));
@@ -115,6 +118,23 @@ void main() {
   });
 
   group('ManifestService المقارنة مع البعيد', () {
+    test('sha256 مفقود أو malformed يرفض manifest', () {
+      final raw = {
+        'schemaVersion': 1,
+        'contentVersion': 2,
+        'exams': [
+          {
+            'id': 'quran_qalon',
+            'version': 2,
+            'title': 'اختبارات قالون',
+            'file': 'exams/quran_qalon.json',
+            'sha256': 'not-a-hash',
+          },
+        ],
+      };
+      expect(() => ContentManifest.fromJson(raw), throwsFormatException);
+    });
+
     test('isUpdateAvailable: أحدث ⇐ تحديث، متساوي/أقدم ⇐ بلا', () async {
       final remote = await source.fetchManifest(); // contentVersion 2
       expect(await ManifestService.isUpdateAvailable(remote, local: _local), isTrue);
@@ -157,6 +177,7 @@ void main() {
             version: 9,
             title: 'اختبارات قالون',
             file: 'exams/quran_qalon.json',
+            sha256: '0000000000000000000000000000000000000000000000000000000000000000',
           ),
         ],
       );

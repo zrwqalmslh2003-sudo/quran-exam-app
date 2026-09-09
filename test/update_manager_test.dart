@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quran_exam_app/data/exam_repository.dart';
 import 'package:quran_exam_app/data/github_content_source.dart';
@@ -35,7 +36,12 @@ String examJson({
   });
 }
 
-String manifestJson({int contentVersion = 2, int examVersion = 2}) {
+String manifestJson({
+  int contentVersion = 2,
+  int examVersion = 2,
+  String? sha256Override,
+}) {
+  final payload = examJson(version: examVersion);
   return jsonEncode({
     'schemaVersion': 1,
     'contentVersion': contentVersion,
@@ -45,6 +51,7 @@ String manifestJson({int contentVersion = 2, int examVersion = 2}) {
         'version': examVersion,
         'title': 'اختبارات قالون',
         'file': 'exams/quran_qalon.json',
+        'sha256': sha256Override ?? sha256.convert(utf8.encode(payload)).toString(),
       }
     ],
   });
@@ -187,6 +194,30 @@ void main() {
     expect(await repo.remoteExamVersion('quran_qalon'), 2);
     expect(await repo.manifestMetaValue('manifest_content_version'), '2',
         reason: 'يُجنّد الإصدار 3 في المانفيست فقط بعد نجاح كامل');
+  });
+
+  test('بصمة SHA-256 خاطئة → التحديث يُرفض والمحتوى السابق يبقى', () async {
+    routes['manifest.json'] = manifestJson(examVersion: 2);
+    routes['quran_qalon.json'] = examJson(version: 2);
+    await UpdateManager.checkForUpdates(source: source, repo: repo);
+
+    routes['manifest.json'] = manifestJson(
+      contentVersion: 3,
+      examVersion: 3,
+      sha256Override:
+          '0000000000000000000000000000000000000000000000000000000000000000',
+    );
+    routes['quran_qalon.json'] = examJson(version: 3);
+    final diagnostics = <String>[];
+    await UpdateManager.checkForUpdates(
+      source: source,
+      repo: repo,
+      onDiagnostic: diagnostics.add,
+    );
+
+    expect(await repo.remoteExamVersion('quran_qalon'), 2);
+    expect(await repo.manifestMetaValue('manifest_content_version'), '2');
+    expect(diagnostics, ['validation_failure']);
   });
 
   test('حمولة مخالفة للعقد (schemaVersion) → رفض وتبقى السابقة', () async {

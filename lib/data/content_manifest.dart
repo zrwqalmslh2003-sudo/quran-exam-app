@@ -1,16 +1,13 @@
 /// نموذج المانفيست (فهرس المحتوى) — تطبيق عقد `docs/content-schema/manifest.schema.json`.
-///
-/// المانفيست هو أول ملف يُقرأ (محلياً مجمّعاً حالياً، ولاحقاً من GitHub).
-/// أية مخالفة للعقد ترفض بإلقاء [FormatException] أثناء التحليل.
 library;
 
-/// [ContentManifest.exams] — وصف اختبار واحد.
 class ManifestExam {
   const ManifestExam({
     required this.id,
     required this.version,
     required this.title,
     required this.file,
+    required this.sha256,
     this.category,
     this.questionCount,
     this.updatedAt,
@@ -21,6 +18,7 @@ class ManifestExam {
     final version = json['version'];
     final title = json['title'];
     final file = json['file'];
+    final sha256 = json['sha256'];
     if (id is! String || id.isEmpty) {
       throw const FormatException('manifest exam: id مطلوب وغير فارغ');
     }
@@ -34,6 +32,10 @@ class ManifestExam {
         !RegExp(r'^[A-Za-z0-9_./-]+\.json$').hasMatch(file)) {
       throw const FormatException(
           'manifest exam: file مسار JSON صالح مثل exams/quran_qalon.json');
+    }
+    if (sha256 is! String || !RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(sha256)) {
+      throw const FormatException(
+          'manifest exam: sha256 يجب أن يكون قيمة hex بطول 64');
     }
     final category = json['category'];
     if (category != null && category is! String) {
@@ -52,6 +54,7 @@ class ManifestExam {
       version: version,
       title: title,
       file: file,
+      sha256: sha256.toLowerCase(),
       category: category as String?,
       questionCount: count is int && count >= 0 ? count : null,
       updatedAt: updatedAt as String?,
@@ -59,23 +62,14 @@ class ManifestExam {
   }
 
   final String id;
-
-  /// أحدث نسخة منشورة من الاختبار، تُقارن بالنسخة المحلية المخزنة محلياً.
   final int version;
-
   final String title;
-
-  /// مسار ملف الاختبار داخل مستودع المحتوى (مثال: `exams/quran_qalon.json`).
   final String file;
-
+  final String sha256;
   final String? category;
-
-  /// عدد الأسئلة المعروف (اختياري، يُعرض قبل التحميل).
   final int? questionCount;
-
   final String? updatedAt;
 
-  /// هل النسخة [remote] أحدث من النسخة [local]؟
   bool isNewerThan(int local) => version > local;
 
   Map<String, Object?> toJson() => {
@@ -83,13 +77,13 @@ class ManifestExam {
         'version': version,
         'title': title,
         'file': file,
+        'sha256': sha256,
         if (category != null) 'category': category,
         if (questionCount != null) 'questionCount': questionCount,
         if (updatedAt != null) 'updatedAt': updatedAt,
       };
 }
 
-/// فهرس التحديث المركزي — [ContentManifest.schemaVersion] هو إصدار العقد.
 class ContentManifest {
   const ContentManifest({
     required this.schemaVersion,
@@ -98,7 +92,6 @@ class ContentManifest {
     this.updatedAt,
   });
 
-  /// يحلل المانفيست ويرفض أي مخالفة للعقد (schemaVersion 1).
   factory ContentManifest.fromJson(Object? raw) {
     if (raw is! Map<String, Object?>) {
       throw const FormatException('manifest: الجذر يجب أن يكون كائناً JSON');
@@ -139,14 +132,9 @@ class ContentManifest {
     );
   }
 
-  /// إصدار عقد المحتوى (ثابت على 1 حتى كسر البنية).
   final int schemaVersion;
-
-  /// إصدار الفهرس نفسه — يُرفع كلما تغيّر المانفيست.
   final int contentVersion;
-
   final List<ManifestExam> exams;
-
   final String? updatedAt;
 
   Map<String, Object?> toJson() => {

@@ -27,7 +27,7 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "version", "title", "file"],
+        "required": ["id", "version", "title", "file", "sha256"],
         "additionalProperties": false,
         "properties": {
           "id": {
@@ -49,6 +49,11 @@
             "type": "string",
             "pattern": "^[A-Za-z0-9_./-]+\\.json$",
             "description": "Relative path of the exam file in the content repository (e.g. 'exams/quran_qalon.json')."
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{64}$",
+            "description": "Lowercase or uppercase hexadecimal SHA-256 of the exact exam payload bytes."
           },
           "category": {
             "type": "string",
