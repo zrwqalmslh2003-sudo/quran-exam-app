@@ -16,6 +16,7 @@ List<Question> _byId(List<Question> qs) {
 Directory _tmpDir() => Directory.systemTemp.createTempSync('qalon_test');
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(sqfliteFfiInit);
 
   test('bootstrap: SQLite مبني من JSON المضمّن يردّ نفس الأسئلة', () async {
