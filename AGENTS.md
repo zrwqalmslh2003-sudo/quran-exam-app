@@ -260,12 +260,32 @@ Do not sacrifice correctness for speed of implementation.
 
 ---
 
+## 16. Content Schema Rule
+
+The content schema is a contract between the app and future remote content.
+
+Never change the schema silently.
+
+Any breaking schema change must:
+
+1. Increment schemaVersion.
+2. Document the migration.
+3. Preserve compatibility with existing installed content whenever reasonably possible.
+
+Do not design SQLite tables before the content schema is reviewed and committed.
+
+The JSON content schema is the source contract.
+Database representation is an implementation detail.
+
+---
+
 ## Roadmap (frozen at v1.0-modern-dark)
 
 | Version | Work |
 | --- | --- |
 | v1.0 | Install current app and fix bugs |
 | v1.1 | Separate Question/Exam from exam.dart |
+| v1.15 | Content schema contract (docs/content-schema/) |
 | v1.2 | Add ExamRepository + SQLite |
 | v1.3 | Add manifest.json + GitHub downloader |
 | v1.4 | Auto-update + Offline + validation |

@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://qalon.app/schema/exam.schema.json",
+  "title": "Exam",
+  "description": "One exam file (schemaVersion 1). An exam is a self-contained bundle of questions. Its 'version' is bumped whenever its content changes.",
+  "type": "object",
+  "required": ["schemaVersion", "id", "version", "title", "questions"],
+  "additionalProperties": true,
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Content schema contract version. Bump only on breaking changes (see README)."
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable exam identifier, e.g. 'quran_qalon'. Must match the manifest entry id."
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Exam content version. Incremented on every published change."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable exam title."
+    },
+    "language": {
+      "type": "string",
+      "default": "ar",
+      "description": "BCP-47 language code of the content."
+    },
+    "category": {
+      "type": "string",
+      "description": "Optional top-level category id."
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional short description shown in catalogs."
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date",
+      "description": "Optional publish date in ISO 8601 (YYYY-MM-DD)."
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "question.schema.json" },
+      "description": "Question list. Question 'id' values must be unique across the whole exam (application-level rule, not expressible in pure JSON Schema)."
+    }
+  }
+}
