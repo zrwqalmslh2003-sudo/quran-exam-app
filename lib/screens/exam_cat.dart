@@ -32,7 +32,7 @@ class _ExamCatScreenState extends State<ExamCatScreen> {
   Future<List<Question>> _load() async {
     final repo = await ExamRepository.instance;
     if (widget.examId != null && repo is ExamCatalogRepository) {
-      final list = await repo.questionsForExam(widget.examId!);
+      final list = await (repo as ExamCatalogRepository).questionsForExam(widget.examId!);
       _questions = list;
       return list;
     }

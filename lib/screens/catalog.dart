@@ -49,7 +49,9 @@ class _ExamCatalogScreenState extends State<ExamCatalogScreen> {
 
   Future<List<ExamCatalogEntry>> _load() async {
     final repo = await ExamRepository.instance;
-    if (repo is ExamCatalogRepository) return repo.activeExamCatalog();
+    if (repo is ExamCatalogRepository) {
+      return (repo as ExamCatalogRepository).activeExamCatalog();
+    }
     return const [];
   }
 
