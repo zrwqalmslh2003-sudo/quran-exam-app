@@ -41,6 +41,7 @@ class AppDataStore implements TableSource {
     return AppDataStore._(data);
   }
 
+  @override
   List<Map<String, Object?>> table(String name) => _data[name]!;
 
   // ---- التصنيفات -----------------------------------------------------------
