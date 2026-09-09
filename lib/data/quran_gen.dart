@@ -147,3 +147,34 @@ Future<({Ayah ayah, List<SurahPick> options})?> buildAyahQuestion(
   final options = ([answer, ...distractors]..shuffle());
   return (ayah: ayah, options: options);
 }
+
+/// سؤال مولّد من آية — يمثّل عناصر سؤال واحد في اختبار الآيات.
+class AyahQuestion {
+  final Ayah ayah;
+  final List<SurahPick> options;
+
+  const AyahQuestion(this.ayah, this.options);
+
+  /// فهرس الإجابة الصحيحة (سورة الآية) داخل الخيارات.
+  int get correctIndex {
+    for (var i = 0; i < options.length; i++) {
+      if (options[i].id == ayah.chapterId) return i;
+    }
+    return -1;
+  }
+}
+
+/// يبني قائمة جاهزة من أسئلة الآيات حتى الحد المطلوب،
+/// مع استبعاد الآيات المستخدمة وعدم تكرارها.
+Future<List<AyahQuestion>> buildAyahExam(QuranGenerator gen, int quarterId,
+    {required int limit}) async {
+  final excluded = <int>{};
+  final out = <AyahQuestion>[];
+  for (var i = 0; i < limit; i++) {
+    final q = await buildAyahQuestion(gen, quarterId, excludeAyahIds: excluded);
+    if (q == null) break;
+    excluded.add(q.ayah.id);
+    out.add(AyahQuestion(q.ayah, q.options));
+  }
+  return out;
+}

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../data/db.dart';
+import '../data/exam_repository.dart';
 import 'exam_cat.dart';
 
 class RandomSetupScreen extends StatefulWidget {
@@ -81,7 +82,8 @@ class _RandomSetupScreenState extends State<RandomSetupScreen> {
   }
 
   Future<void> _start(int? categoryId, String name) async {
-    final questions = await AppDatabase.randomQuestions(_size, categoryId: categoryId);
+    final questions = await (await ExamRepository.instance)
+        .randomQuestions(_size, categoryId: categoryId);
     if (!mounted) return;
     if (questions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('لا توجد أسئلة كافية في هذا النطاق')));

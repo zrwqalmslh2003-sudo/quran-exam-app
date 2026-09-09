@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../data/db.dart';
+import '../data/exam_repository.dart';
 import '../models/question.dart';
 import 'result.dart';
 
@@ -28,7 +28,8 @@ class _ExamCatScreenState extends State<ExamCatScreen> {
   }
 
   Future<List<Question>> _load() async {
-    final list = await AppDatabase.questionsForTopic(widget.topicId);
+    final repo = await ExamRepository.instance;
+    final list = await repo.questionsForTopic(widget.topicId);
     _questions = list;
     return list;
   }

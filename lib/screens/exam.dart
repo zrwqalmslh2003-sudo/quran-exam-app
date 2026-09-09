@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../data/db.dart';
+import '../data/exam_repository.dart';
 import '../data/quran_gen.dart';
 import 'result.dart';
 
@@ -20,9 +20,8 @@ class ExamScreen extends StatefulWidget {
 }
 
 class _ExamScreenState extends State<ExamScreen> {
-  final _excludedIds = <int>{};
-  Ayah? _ayah;
-  List<SurahPick>? _options;
+  List<AyahQuestion>? _questions;
+  int _index = 0;
   bool _loading = true;
   int? _selected;
   bool _revealed = false;
@@ -33,6 +32,16 @@ class _ExamScreenState extends State<ExamScreen> {
   static const _surface = Color(0xFF141E3B);
   static const _purple = Color(0xFF7B4DFF);
 
+  Ayah? get _ayah => _index < (_questions?.length ?? 0)
+      ? _questions![_index].ayah
+      : null;
+
+  List<SurahPick>? get _options => _index < (_questions?.length ?? 0)
+      ? _questions![_index].options
+      : null;
+
+  bool get _last => _index + 1 >= (_questions?.length ?? 0);
+
   @override
   void initState() {
     super.initState();
@@ -40,41 +49,24 @@ class _ExamScreenState extends State<ExamScreen> {
   }
 
   Future<void> _load() async {
-    if (_attempts >= widget.questionLimit) {
-      _finish();
-      return;
-    }
-
+    final repo = await ExamRepository.instance;
+    final list = await repo.ayahExam(widget.quarterId ?? 1,
+        limit: widget.questionLimit);
+    if (!mounted) return;
     setState(() {
-      _loading = true;
+      _questions = list;
+      _index = 0;
       _selected = null;
       _revealed = false;
-    });
-
-    final db = await AppDatabase.instance;
-    final gen = QuranGenerator(db);
-    final q = await buildAyahQuestion(
-      gen,
-      widget.quarterId ?? 1,
-      excludeAyahIds: _excludedIds,
-    );
-
-    if (q == null) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _ayah = null;
-      });
-      return;
-    }
-
-    _excludedIds.add(q.ayah.id);
-    if (!mounted) return;
-
-    setState(() {
-      _ayah = q.ayah;
-      _options = q.options;
       _loading = false;
+    });
+  }
+
+  void _next() {
+    setState(() {
+      _index++;
+      _selected = null;
+      _revealed = false;
     });
   }
 
@@ -107,11 +99,11 @@ class _ExamScreenState extends State<ExamScreen> {
           onRetry: () {
             Navigator.pop(context);
             setState(() {
-              _excludedIds.clear();
-              _ayah = null;
-              _options = null;
+              _questions = null;
+              _index = 0;
               _score = 0;
               _attempts = 0;
+              _loading = true;
             });
             _load();
           },
@@ -128,9 +120,8 @@ class _ExamScreenState extends State<ExamScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final progress = widget.questionLimit == 0
-        ? 0.0
-        : _attempts / widget.questionLimit;
+    final total = _questions?.length ?? widget.questionLimit;
+    final progress = total == 0 ? 0.0 : _attempts / total;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -153,7 +144,7 @@ class _ExamScreenState extends State<ExamScreen> {
                     ? const _EndState()
                     : Column(
                         children: [
-                          _buildHeader(progress),
+                          _buildHeader(progress, total),
                           Expanded(child: _buildQuestion()),
                         ],
                       ),
@@ -163,8 +154,8 @@ class _ExamScreenState extends State<ExamScreen> {
     );
   }
 
-  Widget _buildHeader(double progress) {
-    final number = _attempts + 1;
+Widget _buildHeader(double progress, int total) {
+  final number = _attempts + 1;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 18, 22, 0),
@@ -242,7 +233,7 @@ class _ExamScreenState extends State<ExamScreen> {
           Row(
             children: [
               Text(
-                '$number / ${widget.questionLimit}',
+                '$number / $total',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 15,
@@ -384,9 +375,9 @@ class _ExamScreenState extends State<ExamScreen> {
         _ConfirmButton(
           enabled: _selected != null,
           revealed: _revealed,
-          isLast: _attempts >= widget.questionLimit,
+          isLast: _last,
           onPressed: _revealed
-              ? (_attempts >= widget.questionLimit ? _finish : _load)
+              ? (_last ? _finish : _next)
               : _confirm,
         ),
       ],
