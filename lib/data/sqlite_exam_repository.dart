@@ -13,6 +13,8 @@ import 'table_source.dart';
 /// - بعد ذلك يُقرأ التطبيق من SQLite فقط ولا يُعاد الاستيراد أبداً،
 ///   حتى لو تغيّر JSON المضمّن في نسخة أحدث من التطبيق.
 /// - عند فشل الفتح أو القراءة ([_fallback]) تُستخدم نسخة JSON كاحتياط.
+/// - جدول [remoteExams] يُخزّن محتوى الاختبارات البعيدة كما هو (JSON نصي)
+///   بنسخة مُفعّلة ومُؤشّر نسخة فقط — لا يتمّ تطبيعها.
 class SQLiteExamRepository implements ExamRepository, TableSource {
   static const _dbVersion = 1;
 
@@ -37,10 +39,13 @@ class SQLiteExamRepository implements ExamRepository, TableSource {
   ///
   /// [factory]/[path] يُمرّران في الاختبارات (FFI وملف مؤقّت)؛
   /// في التطبيق يُستخدم افتراضياً مصنع sqflite القياسي (MethodChannel).
+  /// عند [bootstrap] = false تُخطى التهيئة الأولية ويُنشأ المخطط فقط
+  /// (مفيد في اختبارات Unit لا تملك ملفات أصول Flutter).
   static Future<SQLiteExamRepository> open({
     DatabaseFactory? factory,
     String? path,
     ExamRepository? fallback,
+    bool bootstrap = true,
   }) async {
     final db = await (factory ?? databaseFactory).openDatabase(
       path ?? '${await getDatabasesPath()}/qalon_app.db',
@@ -49,9 +54,12 @@ class SQLiteExamRepository implements ExamRepository, TableSource {
         onCreate: (db, version) => _createSchema(db),
       ),
     );
-    final repo = SQLiteExamRepository._(
-        db, fallback ?? LocalExamRepository(await AppDataStore.instance));
-    await repo._bootstrapIfEmpty();
+    ExamRepository? effectiveFallback = fallback;
+    if (effectiveFallback == null && bootstrap) {
+      effectiveFallback = LocalExamRepository(await AppDataStore.instance);
+    }
+    final repo = SQLiteExamRepository._(db, effectiveFallback!);
+    if (bootstrap) await repo._bootstrapIfEmpty();
     await repo._loadCache();
     return repo;
   }
@@ -120,6 +128,24 @@ class SQLiteExamRepository implements ExamRepository, TableSource {
           .join(', ');
       await db.execute('CREATE TABLE ${entry.key} ($cols)');
     }
+    // جداول المحتوى البعيد — لا تُنشَأ من ملفات JSON، بل من GitHub.
+    await db.execute('''
+      CREATE TABLE remote_exams (
+        exam_id    TEXT    NOT NULL,
+        version    INTEGER NOT NULL,
+        payload    TEXT    NOT NULL,
+        is_active  INTEGER NOT NULL DEFAULT 0,
+        activated_at TEXT,
+        created_at TEXT    NOT NULL,
+        UNIQUE(exam_id, version)
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE content_meta (
+        key   TEXT PRIMARY KEY,
+        value TEXT
+      )
+    ''');
   }
 
   /// يُنسخ JSON المضمّن إلى SQLite فقط إذا كانت قاعدة الأسئلة فارغة.
@@ -204,5 +230,75 @@ class SQLiteExamRepository implements ExamRepository, TableSource {
     } catch (_) {
       return _fallback.ayahExam(quarterId, limit: limit);
     }
+  }
+
+  // ---- المحتوى البعيد (remote_exams + content_meta) -----------------------
+
+  /// رقم نسخة المحتوى البعيدة المفعّلة حالياً لمعرّف [examId]، أو `null` إذا لا يوجد.
+  Future<int?> remoteExamVersion(String examId) async {
+    final rows = await _db.query(
+      'remote_exams',
+      columns: ['version'],
+      where: 'exam_id = ? AND is_active = 1',
+      whereArgs: [examId],
+    );
+    return rows.isNotEmpty ? rows.first['version'] as int : null;
+  }
+
+  /// يُخزّن JSON الاختبار كما هو مع تأشيرة [is_active] = 0.
+  /// `ConflictAlgorithm.replace` يسمح بإعادة تخزين نفس الإصدار بأمان.
+  Future<void> storeRemoteExam(
+      String examId, int version, String payload) async {
+    await _db.insert(
+      'remote_exams',
+      {
+        'exam_id': examId,
+        'version': version,
+        'payload': payload,
+        'is_active': 0,
+        'created_at': DateTime.now().toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// يُفعّل الإصدار [version] ويُوقف أي نسخة سابقة لنفس الاختبار
+  /// في معاملة ذرّية واحدة.
+  Future<void> activateRemoteExam(String examId, int version) async {
+    await _db.transaction((txn) async {
+      await txn.update(
+        'remote_exams',
+        {'is_active': 0},
+        where: 'exam_id = ?',
+        whereArgs: [examId],
+      );
+      await txn.update(
+        'remote_exams',
+        {
+          'is_active': 1,
+          'activated_at': DateTime.now().toIso8601String(),
+        },
+        where: 'exam_id = ? AND version = ?',
+        whereArgs: [examId, version],
+      );
+    });
+  }
+
+  Future<String?> manifestMetaValue(String key) async {
+    final rows = await _db.query(
+      'content_meta',
+      columns: ['value'],
+      where: 'key = ?',
+      whereArgs: [key],
+    );
+    return rows.isNotEmpty ? rows.first['value'] as String : null;
+  }
+
+  Future<void> setManifestMeta(String key, String value) async {
+    await _db.insert(
+      'content_meta',
+      {'key': key, 'value': value},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 }
