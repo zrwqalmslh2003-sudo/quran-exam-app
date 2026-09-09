@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'app_data.dart';
+import 'table_source.dart';
 
 class Quarter {
   final int id;
@@ -38,7 +38,7 @@ class SurahPick {
 }
 
 class QuranGenerator {
-  final AppDataStore store;
+  final TableSource store;
 
   QuranGenerator(this.store);
 
