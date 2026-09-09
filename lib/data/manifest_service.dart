@@ -23,9 +23,12 @@ class ManifestService {
   /// هل الفهرس البعيد أحدث من المضمّن؟
   ///
   /// يرمي [FormatException] إذا اختلف `schemaVersion` (كسر عقد يتطلب تحديث التطبيق،
-  /// لا تحديث محتوى).
-  static Future<bool> isUpdateAvailable(ContentManifest remote) async {
-    final local = await loadLocal();
+  /// لا تحديث محتوى). [local] تُحقن في الاختبارات بدل `assets/manifest.json`.
+  static Future<bool> isUpdateAvailable(
+    ContentManifest remote, {
+    ContentManifest? local,
+  }) async {
+    local ??= await loadLocal();
     _guardSameSchema(local, remote);
     return remote.contentVersion > local.contentVersion;
   }
@@ -39,8 +42,9 @@ class ManifestService {
   static Future<ManifestExam?> remoteExamIfNewer(
     ContentManifest remote, {
     required String examId,
+    ContentManifest? local,
   }) async {
-    final local = await loadLocal();
+    local ??= await loadLocal();
     _guardSameSchema(local, remote);
 
     final remoteExam = manifestById(remote, examId);

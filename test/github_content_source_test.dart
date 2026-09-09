@@ -6,56 +6,81 @@ import 'package:quran_exam_app/data/content_manifest.dart';
 import 'package:quran_exam_app/data/github_content_source.dart';
 import 'package:quran_exam_app/data/manifest_service.dart';
 
+/// ملاحظة: هذا الملف لا يهيّئ TestWidgetsFlutterBinding لأن الـ binding
+/// يستبدل HttpClient فيرد 400 بلا شبكة فعلية على كل الطلبات.
+/// مسار rootBundle (assets) غير مطلوب هنا؛ نُمرّر [ContentManifest] محلياً صراحةً.
+
+const _local = ContentManifest(
+  schemaVersion: 1,
+  contentVersion: 1,
+  exams: [
+    ManifestExam(
+      id: 'quran_qalon',
+      version: 1,
+      title: 'اختبارات قالون',
+      file: 'exams/quran_qalon.json',
+      questionCount: 520,
+    ),
+  ],
+);
+
+String manifestJson({int contentVersion = 2, int examVersion = 2}) =>
+    jsonEncode({
+      'schemaVersion': 1,
+      'contentVersion': contentVersion,
+      'updatedAt': '2026-09-09',
+      'exams': [
+        {
+          'id': 'quran_qalon',
+          'version': examVersion,
+          'title': 'اختبارات قالون',
+          'file': 'exams/quran_qalon.json',
+          'questionCount': 520,
+        }
+      ],
+    });
+
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
-
   late HttpServer server;
-  late Uri base;
   late GithubContentSource source;
-
-  String manifestJson({int schemaVersion = 1, int contentVersion = 2}) =>
-      jsonEncode({
-        'schemaVersion': schemaVersion,
-        'contentVersion': contentVersion,
-        'updatedAt': '2026-09-09',
-        'exams': [
-          {
-            'id': 'quran_qalon',
-            'version': 1,
-            'title': 'اختبارات قالون',
-            'file': 'exams/quran_qalon.json',
-            'questionCount': 520,
-          }
-        ],
-      });
 
   setUpAll(() async {
     server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     server.listen((request) async {
-      if (request.uri.path.endsWith('/missing.json')) {
-        request.response.statusCode = HttpStatus.notFound;
-        await request.response.close();
-        return;
-      }
-      if (request.uri.path.endsWith('/manifest.json')) {
+      final path = request.uri.path;
+      if (path.endsWith('/manifest.json')) {
         request.response
           ..headers.contentType = ContentType.json
           ..write(manifestJson());
         await request.response.close();
         return;
       }
-      if (request.uri.path.endsWith('/manifest_bad_schema.json')) {
+      if (path.endsWith('/manifest_bad_schema.json')) {
         request.response
           ..headers.contentType = ContentType.json
-          ..write(manifestJson(schemaVersion: 0));
+          ..write(jsonEncode({
+            'schemaVersion': 0,
+            'contentVersion': 9,
+            'exams': <Object?>[
+              {
+                'id': 'q',
+                'version': 1,
+                'title': 't',
+                'file': 'exams/a.json',
+              }
+            ],
+          }));
         await request.response.close();
         return;
       }
-      request.response.statusCode = HttpStatus.internalServerError;
+      request.response.statusCode = HttpStatus.notFound;
       await request.response.close();
     });
-    base = Uri.parse('http://${server.address.address}:${server.port}');
-    source = GithubContentSource(owner: 'o', repo: 'r', baseUrl: base.toString());
+    source = GithubContentSource(
+      owner: 'o',
+      repo: 'r',
+      baseUrl: 'http://${server.address.address}:${server.port}',
+    );
   });
 
   tearDownAll(() async {
@@ -69,19 +94,19 @@ void main() {
       expect(manifest.schemaVersion, 1);
       expect(manifest.contentVersion, 2);
       expect(manifest.exams.single.id, 'quran_qalon');
+      expect(manifest.exams.single.version, 2);
     });
 
     test('استجابة 404 → ContentFetchException بحالة 404', () async {
-      expect(
-        () => source.fetchText(source.urlFor('missing.json')),
+      await expectLater(
+        source.fetchText(source.urlFor('missing.json')),
         throwsA(isA<ContentFetchException>()
             .having((e) => e.statusCode, 'statusCode', 404)),
       );
     });
 
     test('محتوى مخالف للعقد → FormatException', () async {
-      final bad = await source
-          .fetchText(source.urlFor('manifest_bad_schema.json'));
+      final bad = await source.fetchText(source.urlFor('manifest_bad_schema.json'));
       expect(
         () => ContentManifest.fromJson(jsonDecode(bad)),
         throwsFormatException,
@@ -90,44 +115,39 @@ void main() {
   });
 
   group('ManifestService المقارنة مع البعيد', () {
-    test('isUpdateAvailable: أحدث ⇐ بلا تحديث، متساوٍ ⇐ بلا', () async {
-      final manifest = await source.fetchManifest(); // contentVersion 2
-      final local = await ManifestService.loadLocal(); // contentVersion 1
-
-      expect(manifest.contentVersion, isNot(local.contentVersion));
-      expect(await ManifestService.isUpdateAvailable(manifest), isTrue);
-
-      expect(await ManifestService.isUpdateAvailable(local), isFalse);
+    test('isUpdateAvailable: أحدث ⇐ تحديث، متساوي/أقدم ⇐ بلا', () async {
+      final remote = await source.fetchManifest(); // contentVersion 2
+      expect(await ManifestService.isUpdateAvailable(remote, local: _local), isTrue);
+      expect(
+        await ManifestService.isUpdateAvailable(_local, local: _local),
+        isFalse,
+      );
     });
 
     test('remoteExamIfNewer: نسخة exam أحدث تُعاد، ومساوية لا تُعاد', () async {
-      final manifest = await source.fetchManifest();
+      final remote = await source.fetchManifest(); // exam version 2
 
-      final newer = await ManifestService.remoteExamIfNewer(manifest,
-          examId: 'quran_qalon');
+      final newer =
+          await ManifestService.remoteExamIfNewer(remote, examId: 'quran_qalon', local: _local);
       expect(newer, isNotNull);
-      expect(newer!.version, greaterThanOrEqualTo(1));
+      expect(newer!.version, 2);
 
       expect(
-        await ManifestService.remoteExamIfNewer(
-          await ManifestService.loadLocal(),
-          examId: 'quran_qalon',
-        ),
+        await ManifestService.remoteExamIfNewer(_local, examId: 'quran_qalon', local: _local),
         isNull,
         reason: 'نسخة مساوية لا تعتبر تحديثاً',
       );
     });
 
     test('exam غير معروف ⇒ null', () async {
-      final manifest = await source.fetchManifest();
+      final remote = await source.fetchManifest();
       expect(
-        await ManifestService.remoteExamIfNewer(manifest, examId: 'nope'),
+        await ManifestService.remoteExamIfNewer(remote, examId: 'nope', local: _local),
         isNull,
       );
     });
 
     test('schemaVersion مختلف ⇒ FormatException', () async {
-      // منظّم عقد v2 مستقبلي يُنتج schemaVersion أعلى؛ حارس ManifestService يرفضه.
       const bad = ContentManifest(
         schemaVersion: 2,
         contentVersion: 2,
@@ -141,11 +161,11 @@ void main() {
         ],
       );
       expect(
-        () => ManifestService.isUpdateAvailable(bad),
+        () => ManifestService.isUpdateAvailable(bad, local: _local),
         throwsFormatException,
       );
       expect(
-        () => ManifestService.remoteExamIfNewer(bad, examId: 'quran_qalon'),
+        () => ManifestService.remoteExamIfNewer(bad, examId: 'quran_qalon', local: _local),
         throwsFormatException,
       );
     });
