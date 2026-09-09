@@ -183,10 +183,10 @@ void main() {
     routes.remove('quran_qalon.json');
     await UpdateManager.checkForUpdates(source: source, repo: repo);
 
-    // لا يتغير شيء: لا توجد نسخة 3، والنسخة 2 مفعّلة.
+    // لا يتغير شيء: لا توجد نسخة 3، والنسخة 2 مفعّلة، ولا تقدم للمانفيست بعد الفشل.
     expect(await repo.remoteExamVersion('quran_qalon'), 2);
-    expect(await repo.manifestMetaValue('manifest_content_version'), null,
-        reason: 'لا يُسجَّل تقدم في المانفيست بعد فشل جزئي');
+    expect(await repo.manifestMetaValue('manifest_content_version'), '2',
+        reason: 'يُجنّد الإصدار 3 في المانفيست فقط بعد نجاح كامل');
   });
 
   test('حمولة مخالفة للعقد (schemaVersion) → رفض وتبقى السابقة', () async {
