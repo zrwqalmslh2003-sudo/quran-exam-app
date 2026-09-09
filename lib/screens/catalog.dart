@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../data/db.dart';
+import '../data/exam_catalog.dart';
+import '../data/exam_repository.dart';
 import 'exam_cat.dart';
 
 class _Loading extends StatelessWidget {
@@ -27,6 +29,156 @@ class _EmptyState extends StatelessWidget {
         const SizedBox(height: 12),
         const Text('لا توجد بيانات بعد', style: TextStyle(fontWeight: FontWeight.w700)),
       ]));
+}
+
+class ExamCatalogScreen extends StatefulWidget {
+  const ExamCatalogScreen({super.key});
+
+  @override
+  State<ExamCatalogScreen> createState() => _ExamCatalogScreenState();
+}
+
+class _ExamCatalogScreenState extends State<ExamCatalogScreen> {
+  late Future<List<ExamCatalogEntry>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  Future<List<ExamCatalogEntry>> _load() async {
+    final repo = await ExamRepository.instance;
+    if (repo is ExamCatalogRepository) return repo.activeExamCatalog();
+    return const [];
+  }
+
+  @override
+  Widget build(BuildContext context) => _CatalogScaffold(
+        title: 'الاختبارات',
+        subtitle: 'اختبارات متاحة من مستودع المحتوى',
+        child: FutureBuilder<List<ExamCatalogEntry>>(
+          future: _future,
+          builder: (context, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final entries = snap.data ?? const [];
+            if (entries.isEmpty) {
+              return Center(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  const _EmptyState(),
+                  const SizedBox(height: 16),
+                  OutlinedButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const CategoriesScreen()),
+                    ),
+                    child: const Text('استعراض التصنيفات المحلية'),
+                  ),
+                ]),
+              );
+            }
+            final groups = <String, List<ExamCatalogEntry>>{};
+            for (final entry in entries) {
+              groups.putIfAbsent(entry.category, () => []).add(entry);
+            }
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+              children: [
+                for (final group in groups.entries) ...[
+                  _SectionLabel(title: _categoryName(group.key)),
+                  const SizedBox(height: 10),
+                  ...group.value.map((entry) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _RemoteExamCard(entry: entry, onTap: () => _start(entry)),
+                      )),
+                  const SizedBox(height: 10),
+                ],
+              ],
+            );
+          },
+        ),
+      );
+
+  String _categoryName(String value) => switch (value) {
+        'quran' => 'القرآن',
+        'tajweed' => 'التجويد',
+        _ => value,
+      };
+
+  Future<void> _start(ExamCatalogEntry entry) async {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ExamCatScreen(
+          topicId: 0,
+          examId: entry.id,
+          label: entry.title,
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel({required this.title});
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Text(
+        title,
+        style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
+      );
+}
+
+class _RemoteExamCard extends StatelessWidget {
+  const _RemoteExamCard({required this.entry, required this.onTap});
+  final ExamCatalogEntry entry;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surface,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: scheme.outlineVariant.withOpacity(.7)),
+          ),
+          child: Row(children: [
+            Container(
+              width: 49,
+              height: 49,
+              decoration: BoxDecoration(
+                color: scheme.primaryContainer,
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Icon(Icons.quiz_outlined, color: scheme.onPrimaryContainer),
+            ),
+            const SizedBox(width: 13),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(entry.title, style: const TextStyle(fontWeight: FontWeight.w900)),
+              if (entry.description != null) ...[
+                const SizedBox(height: 4),
+                Text(entry.description!, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall),
+              ],
+              const SizedBox(height: 7),
+              Text('${entry.questionCount} سؤالاً', style: Theme.of(context).textTheme.labelSmall),
+            ])),
+            Icon(Icons.arrow_back_ios_new_rounded, size: 15, color: scheme.primary),
+          ]),
+        ),
+      ),
+    );
+  }
 }
 
 class CategoriesScreen extends StatelessWidget {

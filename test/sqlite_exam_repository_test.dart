@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:quran_exam_app/data/app_data.dart';
+import 'package:quran_exam_app/data/exam_catalog.dart';
 import 'package:quran_exam_app/data/exam_repository.dart';
 import 'package:quran_exam_app/data/sqlite_exam_repository.dart';
 import 'package:quran_exam_app/models/question.dart';
@@ -119,5 +120,47 @@ void main() {
     final afterClose = await repo.questionsForTopic(1);
     expect(afterClose, isNotEmpty,
         reason: 'فشل قراءة SQLite يجب أن يمرر إلى JSON المضمّن');
+  });
+
+  test('dynamic catalog: يعرض الاختبارات النشطة ويحمّلها حسب examId', () async {
+    final dir = _tmpDir();
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final repo = await SQLiteExamRepository.open(
+      factory: databaseFactoryFfi,
+      path: '${dir.path}/app.db',
+      bootstrap: false,
+      fallback: LocalExamRepository(await AppDataStore.instance),
+    );
+    addTearDown(repo.close);
+
+    const payload = '''{
+      "schemaVersion": 1,
+      "id": "tajweed",
+      "version": 1,
+      "title": "اختبار التجويد",
+      "category": "tajweed",
+      "description": "اختبار تجريبي",
+      "questions": [{
+        "id": "t1",
+        "type": "single_choice",
+        "prompt": "ما هو المد؟",
+        "options": ["أ", "ب"],
+        "correctAnswer": 0
+      }]
+    }''';
+    await repo.storeRemoteExam('tajweed', 1, payload);
+    await repo.activateRemoteExam('tajweed', 1);
+
+    final catalog = await repo.activeExamCatalog();
+    expect(catalog, hasLength(1));
+    expect(catalog.single, isA<ExamCatalogEntry>());
+    expect(catalog.single.id, 'tajweed');
+    expect(catalog.single.category, 'tajweed');
+    expect(catalog.single.questionCount, 1);
+
+    final questions = await repo.questionsForExam('tajweed');
+    expect(questions, hasLength(1));
+    expect(questions.single.id, 't1');
+    expect(await repo.questionsForExam('missing'), isEmpty);
   });
 }

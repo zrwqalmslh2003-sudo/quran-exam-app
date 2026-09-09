@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import '../data/exam_catalog.dart';
 import '../data/exam_repository.dart';
 import '../models/question.dart';
 import 'result.dart';
 
 class ExamCatScreen extends StatefulWidget {
   final int topicId;
+  final String? examId;
   final String label;
   final List<Question>? questions;
-  const ExamCatScreen({super.key, required this.topicId, required this.label, this.questions});
+  const ExamCatScreen({super.key, required this.topicId, required this.label, this.examId, this.questions});
   @override
   State<ExamCatScreen> createState() => _ExamCatScreenState();
 }
@@ -29,6 +31,11 @@ class _ExamCatScreenState extends State<ExamCatScreen> {
 
   Future<List<Question>> _load() async {
     final repo = await ExamRepository.instance;
+    if (widget.examId != null && repo is ExamCatalogRepository) {
+      final list = await repo.questionsForExam(widget.examId!);
+      _questions = list;
+      return list;
+    }
     final list = await repo.questionsForTopic(widget.topicId);
     _questions = list;
     return list;

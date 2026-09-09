@@ -27,7 +27,7 @@ class HomeScreen extends StatelessWidget {
                   child: _HeroCard(
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const CategoriesScreen()),
+                      MaterialPageRoute(builder: (_) => const ExamCatalogScreen()),
                     ),
                   ),
                 ),
@@ -42,7 +42,7 @@ class HomeScreen extends StatelessWidget {
                           icon: Icons.category_rounded,
                           title: 'التصنيفات',
                           subtitle: 'اختبارات منظمة',
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CategoriesScreen())),
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExamCatalogScreen())),
                         ),
                       ),
                       const SizedBox(width: 12),

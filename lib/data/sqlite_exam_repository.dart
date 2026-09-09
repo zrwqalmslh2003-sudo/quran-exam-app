@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../models/question.dart';
 import 'app_data.dart';
+import 'exam_catalog.dart';
 import 'exam_repository.dart';
 import 'quran_gen.dart';
 import 'question_picker.dart';
@@ -29,7 +30,7 @@ class RemoteExamPayload {
 /// - عند فشل الفتح أو القراءة ([_fallback]) تُستخدم نسخة JSON كاحتياط.
 /// - جدول [remoteExams] يُخزّن محتوى الاختبارات البعيدة كما هو (JSON نصي)
 ///   بنسخة مُفعّلة ومُؤشّر نسخة فقط — لا يتمّ تطبيعها.
-class SQLiteExamRepository implements ExamRepository, TableSource {
+class SQLiteExamRepository implements ExamRepository, ExamCatalogRepository, TableSource {
   static const _dbVersion = 1;
 
   /// الجداول المنعكسة عن ملفات JSON المضمّنة (نفس الأعمدة تماماً).
@@ -259,6 +260,49 @@ class SQLiteExamRepository implements ExamRepository, TableSource {
       whereArgs: [examId],
     );
     return rows.isNotEmpty ? rows.first['version'] as int : null;
+  }
+
+  @override
+  Future<List<ExamCatalogEntry>> activeExamCatalog() async {
+    try {
+      final rows = await _db.query(
+        'remote_exams',
+        columns: ['payload'],
+        where: 'is_active = 1',
+        orderBy: 'activated_at ASC, exam_id ASC',
+      );
+      final entries = <ExamCatalogEntry>[];
+      for (final row in rows) {
+        final payload = row['payload'];
+        if (payload is! String || payload.isEmpty) continue;
+        try {
+          entries.add(ExamCatalogEntry.fromPayload(payload));
+        } catch (_) {
+          // محتوى بعيد تالف لا يُسقط بقية الكتالوج.
+        }
+      }
+      return entries;
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  @override
+  Future<List<Question>> questionsForExam(String examId) async {
+    try {
+      final rows = await _db.query(
+        'remote_exams',
+        columns: ['payload'],
+        where: 'exam_id = ? AND is_active = 1',
+        whereArgs: [examId],
+        orderBy: 'activated_at DESC',
+        limit: 1,
+      );
+      if (rows.isEmpty || rows.first['payload'] is! String) return const [];
+      return _parseRemoteQuestions(rows.first['payload'] as String);
+    } catch (_) {
+      return const [];
+    }
   }
 
   /// يُخزّن JSON الاختبار كما هو مع تأشيرة [is_active] = 0.
