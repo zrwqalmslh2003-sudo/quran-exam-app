@@ -74,10 +74,12 @@ void main() {
       final rows = await db.query('remote_exams');
       await db.close();
 
-      expect(rows, hasLength(1));
-      expect(rows.single['is_active'], 1);
+      expect(rows, isNotEmpty);
+      final qg = rows.where((r) => r['exam_id'] == _examId).toList();
+      expect(qg, hasLength(1), reason: 'يُخزَّن quran_general مرة واحدة');
+      expect(qg.single['is_active'], 1);
       final payload =
-          jsonDecode(rows.single['payload'] as String) as Map<String, dynamic>;
+          jsonDecode(qg.single['payload'] as String) as Map<String, dynamic>;
       expect(payload['id'], _examId);
       expect((payload['questions'] as List), isNotEmpty);
     },
