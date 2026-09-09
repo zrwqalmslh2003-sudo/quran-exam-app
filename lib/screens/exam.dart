@@ -29,6 +29,12 @@ class _ExamScreenState extends State<ExamScreen> {
   int _score = 0;
   int _attempts = 0;
 
+  static const _background = Color(0xFF081126);
+  static const _surface = Color(0xFF141E3B);
+  static const _surface2 = Color(0xFF1B274A);
+  static const _purple = Color(0xFF7B4DFF);
+  static const _blue = Color(0xFF2D86FF);
+
   @override
   void initState() {
     super.initState();
@@ -40,11 +46,13 @@ class _ExamScreenState extends State<ExamScreen> {
       _finish();
       return;
     }
+
     setState(() {
       _loading = true;
       _selected = null;
       _revealed = false;
     });
+
     final db = await AppDatabase.instance;
     final gen = QuranGenerator(db);
     final q = await buildAyahQuestion(
@@ -52,6 +60,7 @@ class _ExamScreenState extends State<ExamScreen> {
       widget.quarterId ?? 1,
       excludeAyahIds: _excludedIds,
     );
+
     if (q == null) {
       if (!mounted) return;
       setState(() {
@@ -60,8 +69,10 @@ class _ExamScreenState extends State<ExamScreen> {
       });
       return;
     }
+
     _excludedIds.add(q.ayah.id);
     if (!mounted) return;
+
     setState(() {
       _ayah = q.ayah;
       _options = q.options;
@@ -69,11 +80,16 @@ class _ExamScreenState extends State<ExamScreen> {
     });
   }
 
-  void _choose(SurahPick pick) {
-    if (_revealed || _ayah == null) return;
-    final correct = pick.id == _ayah!.chapterId;
+  void _select(SurahPick pick) {
+    if (_revealed || _loading) return;
+    setState(() => _selected = pick.id);
+  }
+
+  void _confirm() {
+    if (_selected == null || _ayah == null || _revealed) return;
+
+    final correct = _selected == _ayah!.chapterId;
     setState(() {
-      _selected = pick.id;
       _revealed = true;
       _attempts++;
       if (correct) _score++;
@@ -107,192 +123,299 @@ class _ExamScreenState extends State<ExamScreen> {
   }
 
   bool get _correct => _ayah != null && _selected == _ayah!.chapterId;
+
   String get _feedback => _correct
       ? 'أحسنت! إجابة صحيحة'
       : 'الإجابة الصحيحة: ${_ayah!.surahName}';
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final progress = widget.questionLimit == 0
         ? 0.0
         : _attempts / widget.questionLimit;
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(widget.label ?? 'اختبار الآيات'),
-          actions: [
-            Padding(
-              padding: const EdgeInsetsDirectional.only(end: 16),
-              child: Center(
-                child: Text(
-                  '$_attempts / ${widget.questionLimit}',
-                  style: const TextStyle(fontWeight: FontWeight.w900),
-                ),
-              ),
+        backgroundColor: _background,
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+              colors: [Color(0xFF101A39), Color(0xFF071025)],
             ),
-          ],
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(5),
-            child: LinearProgressIndicator(value: progress, minHeight: 5),
+          ),
+          child: SafeArea(
+            child: _loading
+                ? const Center(
+                    child: CircularProgressIndicator(color: _purple),
+                  )
+                : _ayah == null
+                    ? const _EndState()
+                    : Column(
+                        children: [
+                          _buildHeader(progress),
+                          Expanded(child: _buildQuestion()),
+                        ],
+                      ),
           ),
         ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _ayah == null
-                ? const _EndState()
-                : _buildQuestion(scheme),
       ),
     );
   }
 
-  Widget _buildQuestion(ColorScheme scheme) {
-    final ayah = _ayah!;
-    final options = _options!;
+  Widget _buildHeader(double progress) {
     final number = _attempts + 1;
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 30),
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-              decoration: BoxDecoration(
-                color: scheme.primaryContainer,
-                borderRadius: BorderRadius.circular(999),
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 18, 22, 0),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              _CircleIconButton(
+                icon: Icons.arrow_back_rounded,
+                onPressed: () => Navigator.maybePop(context),
               ),
-              child: Text(
-                'السؤال $number',
-                style: TextStyle(
-                  color: scheme.onPrimaryContainer,
-                  fontWeight: FontWeight.w900,
+              const Spacer(),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'اختيارات',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const Text(
+                        ' وأسئلة',
+                        style: TextStyle(
+                          color: Color(0xFF8B63FF),
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF7751FF),
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(15),
+                            topRight: Radius.circular(15),
+                            bottomLeft: Radius.circular(15),
+                            bottomRight: Radius.circular(5),
+                          ),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            '?',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 29,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'اختر إجابتك .. واختبر معلوماتك',
+                    style: TextStyle(
+                      color: Color(0xFFB6BED3),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Text(
+                '$number / ${widget.questionLimit}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-            ),
-            const Spacer(),
-            Text(
-              '$number / ${widget.questionLimit}',
-              style: Theme.of(context)
-                  .textTheme
-                  .labelLarge
-                  ?.copyWith(fontWeight: FontWeight.w800),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 7,
+                    backgroundColor: const Color(0xFF293351),
+                    valueColor: const AlwaysStoppedAnimation(_purple),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuestion() {
+    final ayah = _ayah!;
+    final options = _options!;
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(22, 24, 22, 26),
+      children: [
         Container(
-          padding: const EdgeInsets.fromLTRB(19, 20, 19, 22),
+          padding: const EdgeInsets.fromLTRB(24, 26, 24, 30),
           decoration: BoxDecoration(
-            color: scheme.surface,
+            color: _surface.withOpacity(.92),
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: scheme.outlineVariant.withOpacity(.7)),
+            border: Border.all(color: const Color(0xFF4E55A3), width: 1.3),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x33000000),
+                blurRadius: 30,
+                offset: Offset(0, 14),
+              ),
+            ],
           ),
           child: Column(
             children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: scheme.primary.withOpacity(.10),
-                  shape: BoxShape.circle,
+              Align(
+                alignment: AlignmentDirectional.topStart,
+                child: Container(
+                  width: 52,
+                  height: 52,
+                  decoration: const BoxDecoration(
+                    color: Color(0x332F65FF),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.lightbulb_outline_rounded,
+                    color: Color(0xFF7189FF),
+                    size: 30,
+                  ),
                 ),
-                child: Icon(Icons.format_quote_rounded,
-                    color: scheme.primary, size: 27),
               ),
-              const SizedBox(height: 15),
+              const SizedBox(height: 18),
               Text(
                 ayah.text,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                    fontSize: 23, height: 1.9, fontWeight: FontWeight.w600),
+                  color: Colors.white,
+                  fontSize: 23,
+                  height: 1.9,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 20),
         const Text(
           'إلى أي سورة تنتمي هذه الآية؟',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+          textAlign: TextAlign.right,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+          ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         ...options.asMap().entries.map(
-              (e) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _OptionTile(
-                  index: e.key,
-                  option: e.value,
-                  selected: _selected,
-                  revealed: _revealed,
-                  correct: e.value.id == ayah.chapterId,
-                  onTap: () => _choose(e.value),
-                ),
-              ),
+          (entry) => Padding(
+            padding: const EdgeInsets.only(bottom: 11),
+            child: _OptionTile(
+              index: entry.key,
+              option: entry.value,
+              selected: _selected,
+              revealed: _revealed,
+              correct: entry.value.id == ayah.chapterId,
+              onTap: () => _select(entry.value),
             ),
+          ),
+        ),
         if (_revealed) ...[
           const SizedBox(height: 4),
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(15),
             decoration: BoxDecoration(
-              color: (_correct ? Colors.green : Colors.redAccent)
-                  .withOpacity(.07),
-              borderRadius: BorderRadius.circular(20),
+              color: (_correct ? Colors.greenAccent : Colors.redAccent)
+                  .withOpacity(.08),
+              borderRadius: BorderRadius.circular(18),
               border: Border.all(
-                color: (_correct ? Colors.green : Colors.redAccent)
-                    .withOpacity(.22),
+                color: (_correct ? Colors.greenAccent : Colors.redAccent)
+                    .withOpacity(.25),
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Icon(
-                      _correct
-                          ? Icons.check_circle_rounded
-                          : Icons.info_rounded,
-                      color: _correct ? Colors.green : Colors.redAccent,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _feedback,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w900, fontSize: 15),
-                      ),
-                    ),
-                  ],
+                Icon(
+                  _correct
+                      ? Icons.check_circle_rounded
+                      : Icons.info_rounded,
+                  color: _correct ? Colors.greenAccent : Colors.redAccent,
                 ),
-                if (ayah.tafseer != null && ayah.tafseer!.isNotEmpty) ...[
-                  const Divider(height: 24),
-                  const Text('فائدة', style: TextStyle(fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 5),
-                  Text(
-                    ayah.tafseer!.length > 220
-                        ? '${ayah.tafseer!.substring(0, 220)}…'
-                        : ayah.tafseer!,
-                    style: const TextStyle(height: 1.6),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    _feedback,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ],
+                ),
               ],
             ),
           ),
           const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: _attempts >= widget.questionLimit ? _finish : _load,
-            icon: Icon(_attempts >= widget.questionLimit
-                ? Icons.flag_rounded
-                : Icons.arrow_back_rounded),
-            label: Text(_attempts >= widget.questionLimit
-                ? 'عرض النتيجة'
-                : 'السؤال التالي'),
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(54),
-              shape: const StadiumBorder(),
-            ),
-          ),
         ],
+        _ConfirmButton(
+          enabled: _selected != null,
+          revealed: _revealed,
+          isLast: _attempts >= widget.questionLimit,
+          onPressed: _revealed
+              ? (_attempts >= widget.questionLimit ? _finish : _load)
+              : _confirm,
+        ),
       ],
+    );
+  }
+}
+
+class _CircleIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const _CircleIconButton({required this.icon, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFF202B4A),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onPressed,
+        child: SizedBox(
+          width: 56,
+          height: 56,
+          child: Icon(icon, color: Colors.white, size: 30),
+        ),
+      ),
     );
   }
 }
@@ -314,72 +437,172 @@ class _OptionTile extends StatelessWidget {
     required this.onTap,
   });
 
+  static const _accent = [
+    Color(0xFF4C7DFF),
+    Color(0xFF25C987),
+    Color(0xFF8A4DFF),
+    Color(0xFFFF8B22),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final isSelected = selected == option.id;
-    Color border = scheme.outlineVariant;
-    Color fill = scheme.surface;
-    IconData? trailing;
+    final accent = _accent[index % _accent.length];
+
+    Color border = accent.withOpacity(.9);
+    Color fill = const Color(0xFF172340);
+
     if (revealed && correct) {
-      border = Colors.green;
-      fill = Colors.green.withOpacity(.07);
-      trailing = Icons.check_circle_rounded;
+      border = Colors.greenAccent;
+      fill = Colors.green.withOpacity(.12);
     } else if (revealed && isSelected) {
       border = Colors.redAccent;
-      fill = Colors.redAccent.withOpacity(.07);
-      trailing = Icons.cancel_rounded;
+      fill = Colors.red.withOpacity(.12);
     } else if (isSelected) {
-      border = scheme.primary;
-      fill = scheme.primary.withOpacity(.07);
+      fill = accent.withOpacity(.18);
+      border = accent;
     }
+
+    final letter = String.fromCharCode(65 + index);
+
     return Material(
-      color: fill,
-      borderRadius: BorderRadius.circular(18),
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(22),
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(22),
         onTap: revealed ? null : onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          height: 78,
+          padding: const EdgeInsetsDirectional.only(start: 18, end: 10),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
+            color: fill,
+            borderRadius: BorderRadius.circular(22),
             border: Border.all(
               color: border,
-              width: isSelected || (revealed && correct) ? 1.7 : 1,
+              width: isSelected || (revealed && correct) ? 1.8 : 1.1,
             ),
           ),
           child: Row(
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? scheme.primary
-                      : scheme.surfaceContainerHighest,
-                  shape: BoxShape.circle,
-                ),
+              Expanded(
                 child: Text(
-                  String.fromCharCode(0x0661 + index),
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    color: isSelected
-                        ? scheme.onPrimary
-                        : scheme.onSurfaceVariant,
+                  option.name,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
               const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  option.name,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w700, fontSize: 16),
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  color: accent,
+                  borderRadius: BorderRadius.circular(17),
+                  boxShadow: [
+                    BoxShadow(
+                      color: accent.withOpacity(.25),
+                      blurRadius: 14,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    letter,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
                 ),
               ),
-              if (trailing != null) Icon(trailing, color: border),
+              if (revealed && (correct || isSelected)) ...[
+                const SizedBox(width: 8),
+                Icon(
+                  correct ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                  color: correct ? Colors.greenAccent : Colors.redAccent,
+                ),
+              ],
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ConfirmButton extends StatelessWidget {
+  final bool enabled;
+  final bool revealed;
+  final bool isLast;
+  final VoidCallback onPressed;
+
+  const _ConfirmButton({
+    required this.enabled,
+    required this.revealed,
+    required this.isLast,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final active = enabled || revealed;
+
+    return Opacity(
+      opacity: active ? 1 : .45,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF8A4DFF), Color(0xFF2D86FF)],
+          ),
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: active
+              ? const [
+                  BoxShadow(
+                    color: Color(0x403D6FFF),
+                    blurRadius: 20,
+                    offset: Offset(0, 8),
+                  ),
+                ]
+              : null,
+        ),
+        child: SizedBox(
+          height: 62,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(30),
+              onTap: active ? onPressed : null,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    revealed
+                        ? (isLast ? 'عرض النتيجة' : 'السؤال التالي')
+                        : 'تأكيد',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Icon(
+                    revealed && isLast
+                        ? Icons.flag_rounded
+                        : Icons.arrow_forward_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -389,6 +612,7 @@ class _OptionTile extends StatelessWidget {
 
 class _EndState extends StatelessWidget {
   const _EndState();
+
   @override
   Widget build(BuildContext context) => Center(
         child: Padding(
@@ -397,24 +621,33 @@ class _EndState extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
+                width: 78,
+                height: 78,
+                decoration: const BoxDecoration(
+                  color: Color(0x332D86FF),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
+                child: const Icon(
                   Icons.verified_rounded,
-                  size: 38,
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  size: 40,
+                  color: Color(0xFF6F8BFF),
                 ),
               ),
-              const SizedBox(height: 16),
-              const Text('انتهت الآيات المتاحة',
-                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 7),
-              const Text('لا توجد آيات أخرى في هذا النطاق.',
-                  textAlign: TextAlign.center),
+              const SizedBox(height: 18),
+              const Text(
+                'انتهت الآيات المتاحة',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'لا توجد آيات أخرى في هذا النطاق.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFFB6BED3)),
+              ),
             ],
           ),
         ),

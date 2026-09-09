@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'modern_theme.dart';
 import '../data/quran_gen.dart';
 import 'exam.dart';
 
@@ -20,7 +21,7 @@ class _QuranSetupScreenState extends State<QuranSetupScreen> {
     final quarter = widget.quarter;
     final title = quarter == null ? 'القرآن كاملاً' : quarter.name;
 
-    return Directionality(
+    return Theme(data: buildModernTheme(), child: Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(title: Text(title)),
@@ -154,6 +155,6 @@ class _QuranSetupScreenState extends State<QuranSetupScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 }

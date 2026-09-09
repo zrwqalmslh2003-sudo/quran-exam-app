@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'modern_theme.dart';
 
 class ResultScreen extends StatelessWidget {
   final int score;
@@ -16,7 +17,7 @@ class ResultScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final pct = _percentage;
-    return Directionality(
+    return Theme(data: buildModernTheme(), child: Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(title: const Text('النتيجة', maxLines: 1, overflow: TextOverflow.ellipsis), automaticallyImplyLeading: false),
@@ -62,7 +63,7 @@ class ResultScreen extends StatelessWidget {
           ]),
         ),
       ),
-    );
+    ));
   }
 }
 

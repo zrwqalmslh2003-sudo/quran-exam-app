@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'modern_theme.dart';
 import '../data/quran_gen.dart';
 import 'catalog.dart';
 import 'random_setup.dart';
@@ -10,7 +11,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Directionality(
+    return Theme(data: buildModernTheme(), child: Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         body: SafeArea(
@@ -104,7 +105,7 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 
