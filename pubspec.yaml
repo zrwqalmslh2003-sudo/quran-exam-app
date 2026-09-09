@@ -30,3 +30,4 @@ flutter:
     - assets/chapters.json
     - assets/verses.json
     - assets/tafseer.json
+    - assets/manifest.json
