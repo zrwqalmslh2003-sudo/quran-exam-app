@@ -2,24 +2,8 @@ import 'package:flutter/material.dart';
 import '../data/db.dart';
 import '../data/exam_catalog.dart';
 import '../data/exam_repository.dart';
+import '../data/sqlite_exam_repository.dart';
 import 'exam_cat.dart';
-
-class _Loading extends StatelessWidget {
-  final Future<List<Map<String, Object?>>> future;
-  final Widget Function(List<Map<String, Object?>>) builder;
-  const _Loading({required this.future, required this.builder});
-
-  @override
-  Widget build(BuildContext context) => FutureBuilder<List<Map<String, Object?>>>(
-        future: future,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
-          final rows = snap.data ?? const [];
-          if (rows.isEmpty) return const _EmptyState();
-          return builder(rows);
-        },
-      );
-}
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState();
@@ -110,17 +94,23 @@ class _ExamCatalogScreenState extends State<ExamCatalogScreen> {
       };
 
   Future<void> _start(ExamCatalogEntry entry) async {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ExamCatScreen(
-          topicId: 0,
-          examId: entry.id,
-          label: entry.title,
-        ),
-      ),
-    );
+    _startRemoteExam(context, entry);
   }
+}
+
+/// يفتح اختباراً بعيداً عبر [ExamCatScreen] بمسار `examId` فقط —
+/// دون أي sentinel لـ `topicId`.
+void _startRemoteExam(BuildContext context, ExamCatalogEntry entry) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => ExamCatScreen(
+        topicId: null,
+        examId: entry.id,
+        label: entry.title,
+      ),
+    ),
+  );
 }
 
 class _SectionLabel extends StatelessWidget {
@@ -185,27 +175,67 @@ class _RemoteExamCard extends StatelessWidget {
 
 class CategoriesScreen extends StatelessWidget {
   const CategoriesScreen({super.key});
+
+  Future<({List<Map<String, Object?>> local, List<RemoteCategoryNode> remote})>
+      _load() async {
+    final local = await AppDatabase.categories();
+    var remote = const <RemoteCategoryNode>[];
+    final repo = await ExamRepository.instance;
+    if (repo is SQLiteExamRepository) {
+      remote = await repo.remoteCategoryTree();
+    }
+    return (local: local, remote: remote);
+  }
+
   @override
   Widget build(BuildContext context) => _CatalogScaffold(
         title: 'التصنيفات',
         subtitle: 'اختر مجالاً لبدء الاختبار',
-        child: _Loading(
-          future: AppDatabase.categories(),
-          builder: (rows) => GridView.builder(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 1.05),
-            itemCount: rows.length,
-            itemBuilder: (context, i) {
-              final c = rows[i];
-              final name = c['name'] as String? ?? '';
-              return _GridCard(
-                emoji: c['emoji'] as String? ?? '📖',
-                title: name,
-                index: i + 1,
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SubcategoriesScreen(categoryId: c['id'] as int, title: name))),
-              );
-            },
-          ),
+        child: FutureBuilder(
+          future: _load(),
+          builder: (context, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final data = snap.data;
+            if (data == null) return const _EmptyState();
+            final local = data.local;
+            final remote = data.remote;
+            if (local.isEmpty && remote.isEmpty) return const _EmptyState();
+            final total = local.length + remote.length;
+            return GridView.builder(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 1.05),
+              itemCount: total,
+              itemBuilder: (context, i) {
+                if (i < local.length) {
+                  final c = local[i];
+                  final name = c['name'] as String? ?? '';
+                  return _GridCard(
+                    emoji: c['emoji'] as String? ?? '📖',
+                    title: name,
+                    index: i + 1,
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SubcategoriesScreen(categoryId: c['id'] as int, title: name))),
+                  );
+                }
+                final node = remote[i - local.length];
+                return _GridCard(
+                  emoji: node.emoji ?? '🛰️',
+                  title: node.name,
+                  index: i + 1,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => RemoteBranchScreen(
+                        categoryReference: node.reference,
+                        title: node.name,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
         ),
       );
 }
@@ -214,28 +244,85 @@ class SubcategoriesScreen extends StatelessWidget {
   final int categoryId;
   final String title;
   const SubcategoriesScreen({super.key, required this.categoryId, required this.title});
+
+  Future<
+      ({
+        List<Map<String, Object?>> local,
+        List<RemoteSubcategoryNode> subs,
+        List<ExamCatalogEntry> direct,
+      })> _load() async {
+    final local = await AppDatabase.subcategories(categoryId);
+    var subs = const <RemoteSubcategoryNode>[];
+    var direct = const <ExamCatalogEntry>[];
+    final repo = await ExamRepository.instance;
+    if (repo is SQLiteExamRepository) {
+      final ref = 'local:c:$categoryId';
+      subs = await repo.remoteSubcategoriesFor(ref);
+      direct = await repo.remoteExamsForCategory(ref);
+    }
+    return (local: local, subs: subs, direct: direct);
+  }
+
   @override
   Widget build(BuildContext context) => _CatalogScaffold(
         title: title,
         subtitle: 'اختر فرعاً للمتابعة',
-        child: _Loading(
-          future: AppDatabase.subcategories(categoryId),
-          builder: (rows) => ListView.separated(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
-            itemCount: rows.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
-            itemBuilder: (context, i) {
-              final s = rows[i];
-              final name = s['name'] as String? ?? '';
-              return _ListCard(
-                emoji: s['emoji'] as String? ?? '📚',
-                title: name,
-                subtitle: 'عرض الموضوعات',
-                index: i + 1,
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => TopicsScreen(subcategoryId: s['id'] as int, title: name))),
-              );
-            },
-          ),
+        child: FutureBuilder(
+          future: _load(),
+          builder: (context, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final data = snap.data;
+            final local = data?.local ?? const <Map<String, Object?>>[];
+            final subs = data?.subs ?? const <RemoteSubcategoryNode>[];
+            final direct = data?.direct ?? const <ExamCatalogEntry>[];
+            if (local.isEmpty && subs.isEmpty && direct.isEmpty) {
+              return const _EmptyState();
+            }
+            final total = local.length + subs.length + direct.length;
+            return ListView.separated(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+              itemCount: total,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (context, i) {
+                if (i < local.length) {
+                  final s = local[i];
+                  final name = s['name'] as String? ?? '';
+                  return _ListCard(
+                    emoji: s['emoji'] as String? ?? '📚',
+                    title: name,
+                    subtitle: 'عرض الموضوعات',
+                    index: i + 1,
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => TopicsScreen(subcategoryId: s['id'] as int, title: name))),
+                  );
+                }
+                if (i < local.length + subs.length) {
+                  final r = subs[i - local.length];
+                  return _ListCard(
+                    emoji: r.emoji ?? '📚',
+                    title: r.name,
+                    subtitle: '${r.examIds.length} اختباراً',
+                    index: i + 1,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => RemoteBranchScreen(
+                          title: r.name,
+                          subcategoryReference: r.reference,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                final entry = direct[i - local.length - subs.length];
+                return _RemoteExamCard(
+                  entry: entry,
+                  onTap: () => _startRemoteExam(context, entry),
+                );
+              },
+            );
+          },
         ),
       );
 }
@@ -244,36 +331,157 @@ class TopicsScreen extends StatelessWidget {
   final int subcategoryId;
   final String title;
   const TopicsScreen({super.key, required this.subcategoryId, required this.title});
+
+  Future<({List<Map<String, Object?>> local, List<ExamCatalogEntry> direct})>
+      _load() async {
+    final local = await AppDatabase.topicsOfSubcategory(subcategoryId);
+    var direct = const <ExamCatalogEntry>[];
+    final repo = await ExamRepository.instance;
+    if (repo is SQLiteExamRepository) {
+      direct = await repo.remoteExamsForSubcategory('local:sc:$subcategoryId');
+    }
+    return (local: local, direct: direct);
+  }
+
   @override
   Widget build(BuildContext context) => _CatalogScaffold(
         title: title,
         subtitle: 'اختر اختباراً من القائمة',
-        child: _Loading(
-          future: AppDatabase.topicsOfSubcategory(subcategoryId),
-          builder: (rows) => ListView.separated(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
-            itemCount: rows.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
-            itemBuilder: (context, i) {
-              final t = rows[i];
-              final name = t['name'] as String? ?? '';
-              final desc = t['description'] as String?;
-              final count = (t['qcount'] as int?) ?? 0;
-              final topicId = t['id'] as int;
-              return _TopicCard(
-                title: name,
-                description: desc,
-                count: count,
-                index: i + 1,
-                onTap: () async {
-                  if (count == 0) return;
-                  final label = await AppDatabase.topicName(topicId);
-                  if (!context.mounted) return;
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => ExamCatScreen(topicId: topicId, label: label ?? name)));
-                },
-              );
-            },
-          ),
+        child: FutureBuilder(
+          future: _load(),
+          builder: (context, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final data = snap.data;
+            final local = data?.local ?? const <Map<String, Object?>>[];
+            final direct = data?.direct ?? const <ExamCatalogEntry>[];
+            if (local.isEmpty && direct.isEmpty) return const _EmptyState();
+            final total = local.length + direct.length;
+            return ListView.separated(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+              itemCount: total,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (context, i) {
+                if (i < local.length) {
+                  final t = local[i];
+                  final name = t['name'] as String? ?? '';
+                  final desc = t['description'] as String?;
+                  final count = (t['qcount'] as int?) ?? 0;
+                  final topicId = t['id'] as int;
+                  return _TopicCard(
+                    title: name,
+                    description: desc,
+                    count: count,
+                    index: i + 1,
+                    onTap: () async {
+                      if (count == 0) return;
+                      final label = await AppDatabase.topicName(topicId);
+                      if (!context.mounted) return;
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => ExamCatScreen(topicId: topicId, label: label ?? name)));
+                    },
+                  );
+                }
+                final entry = direct[i - local.length];
+                return _RemoteExamCard(
+                  entry: entry,
+                  onTap: () => _startRemoteExam(context, entry),
+                );
+              },
+            );
+          },
+        ),
+      );
+}
+
+/// تصفح فرع بعيد (category أو subcategory): الفروع الفرعية والاختبارات
+/// المباشرة. لا يُمرَّر أي `topicId` للاختبارات البعيدة (لا sentinel).
+class RemoteBranchScreen extends StatefulWidget {
+  final String title;
+
+  /// مرجع category للتصفح (يعرض فروعه الفرعية واختباراته المباشرة).
+  final String? categoryReference;
+
+  /// مرجع subcategory للعرض المباشر لاختباراتها.
+  final String? subcategoryReference;
+  const RemoteBranchScreen({super.key, required this.title, this.categoryReference, this.subcategoryReference});
+
+  @override
+  State<RemoteBranchScreen> createState() => _RemoteBranchScreenState();
+}
+
+class _RemoteBranchScreenState extends State<RemoteBranchScreen> {
+  late Future<({List<RemoteSubcategoryNode> subs, List<ExamCatalogEntry> exams})> _future;
+
+  Future<({List<RemoteSubcategoryNode> subs, List<ExamCatalogEntry> exams})>
+      _load() async {
+    final repo = await ExamRepository.instance;
+    if (repo is! SQLiteExamRepository) {
+      return (subs: const [], exams: const []);
+    }
+    var subs = const <RemoteSubcategoryNode>[];
+    var exams = const <ExamCatalogEntry>[];
+    if (widget.subcategoryReference != null) {
+      exams = await repo.remoteExamsForSubcategory(widget.subcategoryReference!);
+    } else if (widget.categoryReference != null) {
+      subs = await repo.remoteSubcategoriesFor(widget.categoryReference!);
+      exams = await repo.remoteExamsForCategory(widget.categoryReference!);
+    }
+    return (subs: subs, exams: exams);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  @override
+  Widget build(BuildContext context) => _CatalogScaffold(
+        title: widget.title,
+        subtitle: 'اختر اختباراً من القائمة',
+        child: FutureBuilder(
+          future: _future,
+          builder: (context, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final data = snap.data;
+            final subs = data?.subs ?? const <RemoteSubcategoryNode>[];
+            final exams = data?.exams ?? const <ExamCatalogEntry>[];
+            if (subs.isEmpty && exams.isEmpty) return const _EmptyState();
+            final total = subs.length + exams.length;
+            return ListView.separated(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+              itemCount: total,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (context, i) {
+                if (i < subs.length) {
+                  final s = subs[i];
+                  return _ListCard(
+                    emoji: s.emoji ?? '📚',
+                    title: s.name,
+                    subtitle: '${s.examIds.length} اختباراً',
+                    index: i + 1,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => RemoteBranchScreen(
+                          title: s.name,
+                          subcategoryReference: s.reference,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                final entry = exams[i - subs.length];
+                return _RemoteExamCard(
+                  entry: entry,
+                  onTap: () => _startRemoteExam(context, entry),
+                );
+              },
+            );
+          },
         ),
       );
 }

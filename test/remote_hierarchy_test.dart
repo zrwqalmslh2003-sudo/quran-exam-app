@@ -14,6 +14,7 @@ String _payload(String examId, int version) => '''
   "id": "$examId",
   "version": $version,
   "title": "اختبار $examId",
+  "category": "quran",
   "questions": [{
     "id": "$examId-q1",
     "type": "single_choice",
@@ -228,6 +229,128 @@ void main() {
           reason: 'لا صف شجرة جزئي');
       expect(await repo.remoteCategoryTree(), isEmpty);
       expect(await repo.manifestMetaValue('manifest_content_version'), isNull);
+    });
+  });
+
+  group('دمج الشجرة البعيدة في الملاحة (Step 3)', () {
+    test('category وsubcategory بعيدتان جديدتان → بيانات تصفح كاملة', () async {
+      final dir = _tmpDir();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final repo = await _openRepo(dir);
+      addTearDown(repo.close);
+
+      await repo.applyRemoteUpdate(
+        exams: [
+          _exam('exam_n', newCategoryName: 'علوم جديدة',
+              newSubcategoryName: 'فرع جديد'),
+        ],
+        contentVersion: 2,
+      );
+
+      final tree = await repo.remoteCategoryTree();
+      expect(tree.single.reference, 'remote:c:علوم_جديدة');
+
+      final subs =
+          await repo.remoteSubcategoriesFor('remote:c:علوم_جديدة');
+      expect(subs, hasLength(1));
+      expect(subs.single.reference, 'remote:sc:remote:c:علوم_جديدة:فرع_جديد');
+      expect(subs.single.examIds, ['exam_n']);
+
+      expect(await repo.remoteExamsForCategory('remote:c:علوم_جديدة'), isEmpty,
+          reason: 'الاختبار تحت subcategory لا يظهر كاختبار مباشر للتصنيف');
+
+      final direct =
+          await repo.remoteExamsForSubcategory(subs.single.reference);
+      expect(direct, hasLength(1));
+      expect(direct.single.id, 'exam_n');
+      expect(direct.single.title, 'اختبار exam_n');
+      expect(direct.single.questionCount, 1);
+    });
+
+    test('مراجع local حقيقية → الاختبار يظهر داخل subcategory المحلية فقط',
+        () async {
+      final dir = _tmpDir();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final repo = await _openRepo(dir);
+      addTearDown(repo.close);
+
+      await repo.applyRemoteUpdate(
+        exams: [
+          _exam('local_d1', categoryId: 1, subcategoryId: 1),
+          _exam('local_d2', categoryId: 1),
+        ],
+        contentVersion: 2,
+      );
+
+      final underSub = await repo.remoteExamsForSubcategory('local:sc:1');
+      expect(underSub.map((e) => e.id), ['local_d1']);
+      expect(underSub.single.title, 'اختبار local_d1');
+
+      final underCat = await repo.remoteExamsForCategory('local:c:1');
+      expect(underCat.map((e) => e.id), ['local_d2'],
+          reason: 'العزل: الاختبار الملتصق بـ subcategory لا يظهر مباشرة للتصنيف');
+
+      expect(await repo.remoteSubcategoriesFor('local:c:1'), isEmpty,
+          reason: 'لا فرع بعيد جديد تحت تصنيف محلي هنا');
+      expect(await repo.remoteCategoryTree(), isEmpty,
+          reason: 'المحتوى المحلي الجذر لا يُنشئ remote categories');
+    });
+
+    test('subcategory بعيدة بلا إنشاء category → تُدمج تحت التصنيف المحلي',
+        () async {
+      final dir = _tmpDir();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final repo = await _openRepo(dir);
+      addTearDown(repo.close);
+
+      await repo.applyRemoteUpdate(
+        exams: [
+          _exam('local_sub_new', categoryId: 1,
+              newSubcategoryName: 'فرع محلي جديد'),
+        ],
+        contentVersion: 2,
+      );
+
+      final subs = await repo.remoteSubcategoriesFor('local:c:1');
+      expect(subs, hasLength(1));
+      expect(subs.single.reference, 'remote:sc:local:c:1:فرع_محلي_جديد');
+      expect(subs.single.examIds, ['local_sub_new']);
+
+      final direct = await repo.remoteExamsForSubcategory(subs.single.reference);
+      expect(direct.single.id, 'local_sub_new');
+
+      expect(await repo.remoteExamsForCategory('local:c:1'), isEmpty,
+          reason: 'الاختبار ملتصق بالفرع الجديد لا بالتصنيف مباشرة');
+      expect(await repo.remoteCategoryTree(), isEmpty,
+          reason: 'الأب محلي → لا category بعيدة تُنشأ');
+    });
+
+    test('اختباران متعددان → entries حسب التفعيل وعزل questionsForExam', () async {
+      final dir = _tmpDir();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final repo = await _openRepo(dir);
+      addTearDown(repo.close);
+
+      await repo.applyRemoteUpdate(
+        exams: [
+          _exam('multi_a', newCategoryName: 'التعليم', newSubcategoryName: 'أساسيات'),
+          _exam('multi_b', newCategoryName: 'التعليم', newSubcategoryName: 'أساسيات'),
+        ],
+        contentVersion: 2,
+      );
+
+      final subRef = 'remote:sc:remote:c:التعليم:أساسيات';
+      final entries = await repo.remoteExamsForSubcategory(subRef);
+      expect(entries.map((e) => e.id).toSet(), {'multi_a', 'multi_b'});
+      expect(entries.every((e) => e.questionCount == 1), isTrue);
+
+      final catEntries = await repo.remoteExamsForCategory('remote:c:التعليم');
+      expect(catEntries, isEmpty);
+
+      expect((await repo.questionsForExam('multi_a')).single.text,
+          'سؤال multi_a؟');
+      expect((await repo.questionsForExam('multi_b')).single.text,
+          'سؤال multi_b؟');
     });
   });
 

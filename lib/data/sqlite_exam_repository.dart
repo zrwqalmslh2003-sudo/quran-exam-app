@@ -381,26 +381,134 @@ class SQLiteExamRepository implements ExamRepository, ExamCatalogRepository, Tab
   @override
   Future<List<ExamCatalogEntry>> activeExamCatalog() async {
     try {
-      final rows = await _db.query(
-        'remote_exams',
-        columns: ['payload'],
-        where: 'is_active = 1',
-        orderBy: 'activated_at ASC, exam_id ASC',
-      );
-      final entries = <ExamCatalogEntry>[];
-      for (final row in rows) {
-        final payload = row['payload'];
-        if (payload is! String || payload.isEmpty) continue;
-        try {
-          entries.add(ExamCatalogEntry.fromPayload(payload));
-        } catch (_) {
-          // محتوى بعيد تالف لا يُسقط بقية الكتالوج.
-        }
-      }
-      return entries;
+      return (await _activeExamEntries()).values.toList();
     } catch (_) {
       return const [];
     }
+  }
+
+  /// كل الاختبارات البعيدة النشطة مفهرسة بالمعرّف، بعناوينها من الحمولة.
+  Future<Map<String, ExamCatalogEntry>> _activeExamEntries() async {
+    final rows = await _db.query(
+      'remote_exams',
+      columns: ['payload'],
+      where: 'is_active = 1',
+      orderBy: 'activated_at ASC, exam_id ASC',
+    );
+    final entries = <String, ExamCatalogEntry>{};
+    for (final row in rows) {
+      final payload = row['payload'];
+      if (payload is! String || payload.isEmpty) continue;
+      try {
+        final entry = ExamCatalogEntry.fromPayload(payload);
+        entries[entry.id] = entry;
+      } catch (_) {
+        // محتوى بعيد تالف لا يُسقط بقية الكتالوج.
+      }
+    }
+    return entries;
+  }
+
+  /// الاختبارات البعيدة النشطة المرتبطة مباشرة بمرجع [categoryReference]
+  /// (دون subcategory)، بترتيب التفعيل.
+  Future<List<ExamCatalogEntry>> remoteExamsForCategory(
+      String categoryReference) async {
+    try {
+      final entries = await _activeExamEntries();
+      if (entries.isEmpty) return const [];
+      final state = await _activeHierarchyState();
+      final ids = state.byCategory[categoryReference] ?? const <String>[];
+      return [
+        for (final id in ids)
+          if (entries[id] != null) entries[id]!,
+      ];
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// الاختبارات البعيدة النشطة المرتبطة بمرجع [subcategoryReference]،
+  /// بترتيب التفعيل.
+  Future<List<ExamCatalogEntry>> remoteExamsForSubcategory(
+      String subcategoryReference) async {
+    try {
+      final entries = await _activeExamEntries();
+      if (entries.isEmpty) return const [];
+      final state = await _activeHierarchyState();
+      final ids = state.bySub[subcategoryReference] ?? const <String>[];
+      return [
+        for (final id in ids)
+          if (entries[id] != null) entries[id]!,
+      ];
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// الفروع البعيدة المنشأة تحت مرجع [categoryReference] (محلية كانت أم
+  /// بعيدة)، ولكل فرع اختباراته المباشرة. تسمح الدمج بالملاحة: فرع جديد
+  /// يُعرض تحت تصنيف محلي موجود.
+  Future<List<RemoteSubcategoryNode>> remoteSubcategoriesFor(
+      String categoryReference) async {
+    try {
+      final subs = await _db.query(
+        'remote_subcategories',
+        where: 'category_reference = ? AND is_active = 1',
+        whereArgs: [categoryReference],
+        orderBy: 'name ASC',
+      );
+      if (subs.isEmpty) return const [];
+      final state = await _activeHierarchyState();
+      final out = <RemoteSubcategoryNode>[];
+      for (final row in subs) {
+        final ref = row['reference'];
+        final name = row['name'];
+        if (ref is! String || name is! String) continue;
+        out.add(RemoteSubcategoryNode(
+          reference: ref,
+          name: name,
+          emoji: row['emoji'] as String?,
+          examIds: List.unmodifiable(state.bySub[ref] ?? const []),
+        ));
+      }
+      return out;
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// حالة hierarchy للاختبارات النشطة: مجموع المعرّفات النشطة، والاختبارات
+  /// المباشرة (category بلا sub)، والاختبارات تحت كل subcategory.
+  Future<
+      ({
+        Set<String> activeIds,
+        Map<String, List<String>> byCategory,
+        Map<String, List<String>> bySub,
+      })> _activeHierarchyState() async {
+    final active = await _db.query(
+      'remote_exams',
+      columns: ['exam_id'],
+      where: 'is_active = 1',
+    );
+    final activeIds = active.map((r) => r['exam_id'] as String).toSet();
+    final byCategory = <String, List<String>>{};
+    final bySub = <String, List<String>>{};
+    if (activeIds.isEmpty) {
+      return (activeIds: activeIds, byCategory: byCategory, bySub: bySub);
+    }
+    final rows = await _db.query('remote_exam_hierarchy');
+    for (final row in rows) {
+      final examId = row['exam_id'];
+      if (examId is! String || !activeIds.contains(examId)) continue;
+      final catRef = row['category_reference'] as String?;
+      final subRef = row['subcategory_reference'] as String?;
+      if (subRef != null) {
+        bySub.putIfAbsent(subRef, () => []).add(examId);
+      } else if (catRef != null) {
+        byCategory.putIfAbsent(catRef, () => []).add(examId);
+      }
+    }
+    return (activeIds: activeIds, byCategory: byCategory, bySub: bySub);
   }
 
   /// علاقات (exam → category/subcategory) للاختبارات النشطة فقط.
