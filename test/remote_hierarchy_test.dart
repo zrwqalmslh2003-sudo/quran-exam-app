@@ -339,7 +339,7 @@ void main() {
         contentVersion: 2,
       );
 
-      final subRef = 'remote:sc:remote:c:التعليم:أساسيات';
+      const subRef = 'remote:sc:remote:c:التعليم:أساسيات';
       final entries = await repo.remoteExamsForSubcategory(subRef);
       expect(entries.map((e) => e.id).toSet(), {'multi_a', 'multi_b'});
       expect(entries.every((e) => e.questionCount == 1), isTrue);
