@@ -100,9 +100,8 @@ void main() {
       expect(rows.single.subcategoryReference, 'local:sc:1');
 
       final tree = await repo.remoteCategoryTree();
-      expect(tree.single.name, 'أصول الرواية',
-          reason: 'اسم محلول من المحلية');
-      expect(tree.single.subcategories.single.name, 'أصول رواية قالون');
+      expect(tree, isEmpty,
+          reason: 'مراجع local لا تُنشئ remote categories في الشجرة البعيدة');
     });
 
     test('اسم جديد مطابق لمحلي → يحل للمحلي دون تكرار', () async {
@@ -121,9 +120,8 @@ void main() {
           reason: 'اسم "أصول الرواية" محلي (id=1) → لا duplicate');
 
       final tree = await repo.remoteCategoryTree();
-      expect(tree.single.name, 'أصول الرواية');
-      expect(tree.single.subcategories, isEmpty,
-          reason: 'لم يُنشأ remote category');
+      expect(tree, isEmpty,
+          reason: 'الاسم المطابق لمحلي لا يُنشئ remote category');
     });
 
     test('تكرار الاسم الجديد في نفس المانفيست → reference واحد', () async {
@@ -239,19 +237,23 @@ void main() {
       addTearDown(() => dir.deleteSync(recursive: true));
       final path = '${dir.path}/app.db';
 
-      // قاعدة v1 قديمة: كل جداول _loadCache موجودة + الجدولان القديمان.
+      // قاعدة v1 قديمة: أعمدة كاملة لما يقرأه الكود في الترقية.
       final old = await databaseFactoryFfi.openDatabase(
         path,
         options: OpenDatabaseOptions(version: 1),
       );
+      await old.execute(
+          'CREATE TABLE categories (id INTEGER PRIMARY KEY, name TEXT, emoji TEXT, sort_order INTEGER, is_active INTEGER)');
+      await old.execute(
+          'CREATE TABLE subcategories (id INTEGER PRIMARY KEY, category_id INTEGER, name TEXT, emoji TEXT, sort_order INTEGER, is_active INTEGER)');
       for (final name in const [
-        'categories', 'subcategories', 'topics', 'questions',
-        'chapters', 'verses', 'tafseer',
+        'topics', 'questions', 'chapters', 'verses', 'tafseer',
       ]) {
         await old.execute('CREATE TABLE $name (id INTEGER)');
       }
-      await old.execute('CREATE TABLE remote_exams (exam_id TEXT PRIMARY KEY)');
-      await old.execute('CREATE TABLE content_meta (key TEXT PRIMARY KEY)');
+      await old.execute(
+          'CREATE TABLE remote_exams (exam_id TEXT NOT NULL, version INTEGER NOT NULL, payload TEXT NOT NULL, is_active INTEGER NOT NULL DEFAULT 0, activated_at TEXT, created_at TEXT NOT NULL, UNIQUE(exam_id, version))');
+      await old.execute('CREATE TABLE content_meta (key TEXT PRIMARY KEY, value TEXT)');
       await old.close();
 
       final repo = await SQLiteExamRepository.open(
