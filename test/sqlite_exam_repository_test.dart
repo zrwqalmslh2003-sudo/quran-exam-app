@@ -160,7 +160,7 @@ void main() {
 
     final questions = await repo.questionsForExam('tajweed');
     expect(questions, hasLength(1));
-    expect(questions.single.id, 't1');
+    expect(questions.single.id, 1);
     expect(await repo.questionsForExam('missing'), isEmpty);
   });
 }
