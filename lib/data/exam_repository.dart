@@ -29,6 +29,10 @@ abstract class ExamRepository {
 
   /// اختبار آيات مولّد (الآية → أي سورة؟) ضمن ربع معيّن، حتى الحد المطلوب.
   Future<List<AyahQuestion>> ayahExam(int quarterId, {required int limit});
+
+  /// خطاف اختبارات الويدجت فقط: يثبّت مصدراً بديلاً لتجنّب فتح SQLite أو
+  /// الأصول المضمّنة داخل شاشة حقيقية. تمرير [null] يمسحه وتُعاد التهيئة.
+  static void debugSetInstanceForTest(ExamRepository? repo) => _instance = repo;
 }
 
 /// مصدر محلي — يقرأ من ملفات JSON المضمّنة في الحزمة.
