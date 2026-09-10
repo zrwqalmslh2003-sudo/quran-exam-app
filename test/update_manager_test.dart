@@ -24,6 +24,7 @@ String examJson({
     'id': id,
     'version': version,
     'title': 'اختبارات قالون',
+    'category': 'quran',
     'questions': [
       {
         'id': 'q1',
