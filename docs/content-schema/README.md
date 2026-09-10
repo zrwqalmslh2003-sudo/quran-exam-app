@@ -108,3 +108,36 @@ manifest.json  →  فهرس كل الاختبارات + رقم الإصدار �
 | v1.4 | Update manager + validation + offline fallback |
 
 عند التحقق من أي ملف محتوى (هنا أو من GitHub) يُستخدم هذا العقد كمرجع قبل الحفظ.
+
+## شجرة التصنيفات البعيدة (Remote Category Tree — إضافة تراكمية)
+
+> هذا وصف live 2026-09-10 — لا يرفع `schemaVersion` (كل الحقول اختيارية).
+
+كل عنصر في `exams[]` يستطيع ربط الاختبار بشجرة تصنيفات (محلية أو بعيدة)
+عبر حقول اختيارية:
+
+| الحقل | النوع | المعنى | الشروط |
+| --- | --- | --- | --- |
+| `categoryId` | int ≥ 1 | مرجع category محلية فعالة | يجب أن يشير لمحلي فعال، أو يُرفض قبل أي تخزين |
+| `subcategoryId` | int ≥ 1 | مرجع subcategory محلية فعالة | يجب أن يشير لمحلي فعال |
+| `newCategoryName` | string | إنشاء category بعيدة | يُرفض إذا كان فارغاً/مبيّضاً |
+| `newSubcategoryName` | string | إنشاء subcategory بعيدة تحت parent | تتطلب `categoryId` أو `newCategoryName` (أو `subcategoryId` كأب إلى category) |
+
+### قواعد الهوية (Deterministic Identity)
+
+- category محلية تُحل إلى reference ثابت `local:c:<id>`.
+- category جديدة تُحل إلى `remote:c:<slug(name)>` حيث
+  `slug = trim + استبدال كل مسافات باسم `_`` (اسم مطبّع، لا رقم عشوائي).
+- اسم جديد مطابق لاسم category محلية قائمة → يحل **للمحلية** ولا ينشئ تكرراً.
+- تكرار اسم جديد داخل نفس المانفيست → نفس المرجع (صف واحد).
+- subcategory جديدة تحمل parent حتمي: `remote:sc:<parentRef>:<slug(name)>`.
+
+### مراحل الطبقة
+
+| الخطوة | النطاق | الحالة |
+| --- | --- | --- |
+| Step 1 | حقول manifest + تحقق مبكر (`UpdateManager._validateHierarchyReferences`) | ✅ منجز |
+| Step 2 | SQLite: `remote_categories` + `remote_subcategories` + `remote_exam_hierarchy` في معاملة واحدة مع `applyRemoteUpdate` | ✅ منجز |
+| Step 3 | دمج remote exams في الملاحة (Categories→Subcategories→Topics) | ⏳ |
+| Step 4 | إخراج `ExamCatalogScreen` من الملاحة | ⏳ |
+| Step 5 | اختبارات شاملة بهويات حقيقية | ⏳ |

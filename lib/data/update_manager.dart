@@ -111,6 +111,10 @@ class UpdateManager {
       examId: remoteExam.id,
       version: remoteExam.version,
       payload: raw,
+      categoryId: remoteExam.categoryId,
+      subcategoryId: remoteExam.subcategoryId,
+      newCategoryName: remoteExam.newCategoryName,
+      newSubcategoryName: remoteExam.newSubcategoryName,
     );
   }
 

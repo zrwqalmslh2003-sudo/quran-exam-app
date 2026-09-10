@@ -264,4 +264,65 @@ void main() {
     expect(await rawRows('remote_exams'), isEmpty);
     expect(await repo.manifestMetaValue('manifest_content_version'), null);
   });
+
+  String manifestJsonWithHierarchy({
+    required int contentVersion,
+    List<Map<String, Object?>> examEntries = const [],
+  }) {
+    return jsonEncode({
+      'schemaVersion': 1,
+      'contentVersion': contentVersion,
+      'exams': examEntries,
+    });
+  }
+
+  test('manifest مع hierarchy → exam + شجرة تُخزَّن معاً وبتفعيل واحد', () async {
+    String nestedExam(String id, int version) => examJson(id: id, version: version);
+
+    routes['manifest.json'] = manifestJsonWithHierarchy(
+      contentVersion: 10,
+      examEntries: [
+        {
+          'id': 'tajweed_e1',
+          'version': 1,
+          'title': 'اختبار التجويد',
+          'file': 'exams/tajweed_e1.json',
+          'sha256': sha256
+              .convert(utf8.encode(nestedExam('tajweed_e1', 1)))
+              .toString(),
+          'newCategoryName': 'علوم القرآن',
+          'newSubcategoryName': 'مبادئ التجويد',
+        },
+        {
+          'id': 'tajweed_e2',
+          'version': 1,
+          'title': 'اختبار المدود',
+          'file': 'exams/tajweed_e2.json',
+          'sha256': sha256
+              .convert(utf8.encode(nestedExam('tajweed_e2', 1)))
+              .toString(),
+          'newCategoryName': 'علوم القرآن',
+          'newSubcategoryName': 'مبادئ التجويد',
+        },
+      ],
+    );
+    routes['tajweed_e1.json'] = nestedExam('tajweed_e1', 1);
+    routes['tajweed_e2.json'] = nestedExam('tajweed_e2', 1);
+
+    await UpdateManager.checkForUpdates(source: source, repo: repo);
+
+    expect(await repo.remoteExamVersion('tajweed_e1'), 1);
+    expect(await repo.remoteExamVersion('tajweed_e2'), 1);
+
+    final rows = await repo.remoteHierarchyRows();
+    expect(rows, hasLength(2));
+    expect(rows.every((r) => r.categoryReference == 'remote:c:علوم_القرآن'), true);
+
+    final tree = await repo.remoteCategoryTree();
+    expect(tree, hasLength(1),
+        reason: 'الاسم الجديد المكرر في نفس المانفيست → ref واحد');
+    expect(tree.single.subcategories.single.examIds, hasLength(2));
+
+    expect((await rawRows('remote_exams')).every((r) => r['is_active'] == 1), true);
+  });
 }
