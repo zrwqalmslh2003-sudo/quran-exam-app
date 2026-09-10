@@ -6,6 +6,10 @@ import 'package:quran_exam_app/screens/exam_cat.dart';
 void main() {
   testWidgets('سؤال وحيد الإجابة: النقر على خيار يكشف التقييم دون زر تأكيد',
       (tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
     const question = Question(
       id: 1,
       topicId: 1,

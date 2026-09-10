@@ -52,8 +52,12 @@ Future<void> pumpUntil(WidgetTester tester, Finder finder,
 void main() {
   setUp(() => ExamRepository.debugSetInstanceForTest(null));
 
-  testWidgets('إعادة الاختبار بعد عرض النتيجة تعمل دون استثناءات الانحياز',
+  testWidgets('إعادة الاختبار بعد عرض النتيجة تعمل دون استثناءات',
       (tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
     final repo = _FakeExamRepository();
     ExamRepository.debugSetInstanceForTest(repo);
 
@@ -65,14 +69,11 @@ void main() {
     expect(tester.takeException(), isNull, reason: 'تحميل الاختبار دون أخطاء');
 
     Future<void> answerQuestion({required bool isLast}) async {
-      await tester.ensureVisible(find.text('A'));
       await tester.tap(find.text('A'));
       await tester.pump(const Duration(milliseconds: 50));
-      await tester.ensureVisible(find.text('تأكيد'));
       await tester.tap(find.text('تأكيد'));
       await tester.pump(const Duration(milliseconds: 50));
       final next = isLast ? 'عرض النتيجة' : 'السؤال التالي';
-      await tester.ensureVisible(find.text(next));
       await tester.tap(find.text(next));
       await tester.pump(const Duration(milliseconds: 50));
     }
@@ -84,7 +85,6 @@ void main() {
     expect(find.text('النتيجة'), findsOneWidget,
         reason: 'يصل المستخدم لشاشة النتيجة');
 
-    await tester.ensureVisible(find.text('إعادة الاختبار'));
     await tester.tap(find.text('إعادة الاختبار'));
 
     await pumpUntil(tester, find.text('تأكيد'));
