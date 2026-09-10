@@ -557,7 +557,7 @@ class SQLiteExamRepository implements ExamRepository, ExamCatalogRepository, Tab
     return byOrder != 0 ? byOrder : a.reference.compareTo(b.reference);
   }
 
-  static String? _resolveLocalName(
+  static String _resolveLocalName(
     String ref,
     List<Map<String, Object?>> localCats,
     List<Map<String, Object?>> localSubs, {
