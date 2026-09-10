@@ -417,7 +417,7 @@ class _RemoteBranchScreenState extends State<RemoteBranchScreen> {
       _load() async {
     final repo = await ExamRepository.instance;
     if (repo is! SQLiteExamRepository) {
-      return (subs: const [], exams: const []);
+      return (subs: const <RemoteSubcategoryNode>[], exams: const <ExamCatalogEntry>[]);
     }
     var subs = const <RemoteSubcategoryNode>[];
     var exams = const <ExamCatalogEntry>[];

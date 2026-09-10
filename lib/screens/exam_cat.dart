@@ -34,7 +34,7 @@ class _ExamCatScreenState extends State<ExamCatScreen> {
     if (widget.examId != null) {
       if (repo is ExamCatalogRepository) {
         final list =
-            await repo.questionsForExam(widget.examId!);
+            await (repo as ExamCatalogRepository).questionsForExam(widget.examId!);
         _questions = list;
         return list;
       }
