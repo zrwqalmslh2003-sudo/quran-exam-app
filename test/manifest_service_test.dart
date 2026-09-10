@@ -7,6 +7,7 @@ Map<String, Object?> _noDupFixture() => {
       'version': 3,
       'title': 'اختبارات قالون',
       'file': 'exams/quran_qalon.json',
+      'sha256': '0000000000000000000000000000000000000000000000000000000000000000',
     };
 
 void main() {
