@@ -140,4 +140,4 @@ manifest.json  →  فهرس كل الاختبارات + رقم الإصدار �
 | Step 2 | SQLite: `remote_categories` + `remote_subcategories` + `remote_exam_hierarchy` في معاملة واحدة مع `applyRemoteUpdate` | ✅ منجز |
 | Step 3 | دمج remote exams في الملاحة (Categories→Subcategories→Topics) — `ExamCatScreen.topicId` أصبح اختيارياً وكل remote exam يُفتح بـ `examId` بلا `topicId: 0` | ✅ منجز |
 | Step 4 | إخراج `ExamCatalogScreen` من الملاحة (hero + «التصنيفات» → `CategoriesScreen`) | ✅ منجز |
-| Step 5 | اختبارات شاملة بهويات حقيقية | ⏳ |
+| Step 5 | اختبارات شاملة بهويات حقيقية | ✅ منجز |
