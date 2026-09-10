@@ -325,4 +325,166 @@ void main() {
 
     expect((await rawRows('remote_exams')).every((r) => r['is_active'] == 1), true);
   });
+
+  group('Step 5 — مراجع hierarchy قبل التخزين (taxonomy محلية seed)', () {
+    late Directory sdir;
+    late SQLiteExamRepository srepo;
+
+    Future<List<Map<String, Object?>>> snapshot(String table) async {
+      final copy = '${sdir.path}/_snapshot.db';
+      await File('${sdir.path}/app.db').copy(copy);
+      final db = await databaseFactoryFfi.openDatabase(copy);
+      final rows = await db.query(table);
+      await db.close();
+      return rows;
+    }
+
+    Map<String, Object?> entry(Map<String, Object?> base) => {
+          ...base,
+          'sha256': sha256
+              .convert(utf8.encode(examJson(
+                id: base['id'] as String,
+                version: base['version'] as int,
+              )))
+              .toString(),
+        };
+
+    setUp(() async {
+      sdir = Directory.systemTemp.createTempSync('qalon_step5');
+      addTearDown(() => sdir.deleteSync(recursive: true));
+      final path = '${sdir.path}/app.db';
+      // schema كامل بلا bootstrap، ثم نفصل محلياً ونعيد الفتح لنقرأه من الكاش.
+      final first = await SQLiteExamRepository.open(
+        factory: databaseFactoryFfi,
+        path: path,
+        fallback: _StubRepository(),
+        bootstrap: false,
+      );
+      final db = await databaseFactoryFfi.openDatabase(path);
+      await db.insert('categories', {
+        'id': 1, 'name': 'أصول الرواية', 'emoji': '📜',
+        'sort_order': 1, 'is_active': 1,
+      });
+      await db.insert('categories', {
+        'id': 5, 'name': 'غريب القرآن', 'emoji': '🕵️',
+        'sort_order': 2, 'is_active': 1,
+      });
+      await db.insert('subcategories', {
+        'id': 1, 'category_id': 1, 'name': 'أصول رواية قالون', 'emoji': '📜',
+        'sort_order': 1, 'is_active': 1,
+      });
+      await db.insert('subcategories', {
+        'id': 7, 'category_id': 5, 'name': 'الجزء الثلاثون', 'emoji': '📖',
+        'sort_order': 1, 'is_active': 1,
+      });
+      await first.close();
+      srepo = await SQLiteExamRepository.open(
+        factory: databaseFactoryFfi,
+        path: path,
+        fallback: _StubRepository(),
+        bootstrap: false,
+      );
+      addTearDown(srepo.close);
+    });
+
+    test('categoryId غير موجود → validation_failure وقبل أي تخزين أو تقدّم', () async {
+      routes['manifest.json'] = manifestJsonWithHierarchy(
+        contentVersion: 20,
+        examEntries: [
+          entry({
+            'id': 'quran_general', 'version': 1, 'title': 'قرآن عام',
+            'file': 'exams/quran_general.json',
+            'categoryId': 999,
+          }),
+        ],
+      );
+      routes['quran_general.json'] = examJson(id: 'quran_general', version: 1);
+
+      final diagnostics = <String>[];
+      await UpdateManager.checkForUpdates(
+        source: source, repo: srepo, onDiagnostic: diagnostics.add,
+      );
+
+      expect(diagnostics, ['validation_failure']);
+      expect(await snapshot('remote_exams'), isEmpty);
+      expect(await srepo.remoteExamVersion('quran_general'), isNull);
+      expect(await snapshot('remote_categories'), isEmpty,
+          reason: 'المرجع المرفوض لا يتجاوز المدخل إلى SQLite');
+    });
+
+    test('علاقة category/subcategory غير متطابقة → رفض قبل التخزين', () async {
+      routes['manifest.json'] = manifestJsonWithHierarchy(
+        contentVersion: 21,
+        examEntries: [
+          entry({
+            'id': 'ghareeb_quran', 'version': 1, 'title': 'غريب القرآن',
+            'file': 'exams/ghareeb_quran.json',
+            'categoryId': 1, 'subcategoryId': 7,
+          }),
+        ],
+      );
+      routes['ghareeb_quran.json'] =
+          examJson(id: 'ghareeb_quran', version: 1);
+
+      final diagnostics = <String>[];
+      await UpdateManager.checkForUpdates(
+        source: source, repo: srepo, onDiagnostic: diagnostics.add,
+      );
+
+      expect(diagnostics, ['validation_failure']);
+      expect(await srepo.remoteExamVersion('ghareeb_quran'), isNull);
+      expect(await snapshot('remote_exams'), isEmpty);
+    });
+
+    test('معرف مكرر في المانفيست → رفض قبل أي تخزين', () async {
+      routes['manifest.json'] = manifestJsonWithHierarchy(
+        contentVersion: 22,
+        examEntries: [
+          entry({
+            'id': 'quran_general', 'version': 1, 'title': 'قرآن عام',
+            'file': 'exams/quran_general.json',
+          }),
+          entry({
+            'id': 'quran_general', 'version': 2, 'title': 'قرآن عام ٢',
+            'file': 'exams/quran_general_v2.json',
+          }),
+        ],
+      );
+      routes['quran_general.json'] = examJson(id: 'quran_general', version: 1);
+      routes['quran_general_v2.json'] = examJson(id: 'quran_general', version: 2);
+
+      final diagnostics = <String>[];
+      await UpdateManager.checkForUpdates(
+        source: source, repo: srepo, onDiagnostic: diagnostics.add,
+      );
+
+      expect(diagnostics, ['validation_failure']);
+      expect(await snapshot('remote_exams'), isEmpty);
+      expect(await srepo.manifestMetaValue('manifest_content_version'), isNull);
+    });
+
+    test('هوية حقيقية بمحلي قائم → تُدمج تحت local:c وتُفعَّل', () async {
+      routes['manifest.json'] = manifestJsonWithHierarchy(
+        contentVersion: 23,
+        examEntries: [
+          entry({
+            'id': 'ghareeb_quran', 'version': 1, 'title': 'غريب القرآن',
+            'file': 'exams/ghareeb_quran.json',
+            'categoryId': 5, 'subcategoryId': 7,
+          }),
+        ],
+      );
+      routes['ghareeb_quran.json'] =
+          examJson(id: 'ghareeb_quran', version: 1);
+
+      await UpdateManager.checkForUpdates(source: source, repo: srepo);
+
+      expect(await srepo.remoteExamVersion('ghareeb_quran'), 1);
+      final merged = await srepo.remoteExamsForSubcategory('local:sc:7');
+      expect(merged.map((e) => e.id), ['ghareeb_quran']);
+      expect(await srepo.remoteCategoryTree(), isEmpty,
+          reason: 'المرجع المحلي الحقيقي لا يبني شجرة بعيدة');
+      expect(await srepo.manifestMetaValue('manifest_content_version'), '23');
+    });
+  });
 }
