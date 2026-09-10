@@ -88,7 +88,7 @@ class _ExamScreenState extends State<ExamScreen> {
 
   void _finish() {
     if (!mounted) return;
-    Navigator.pushReplacement(
+    Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => ResultScreen(

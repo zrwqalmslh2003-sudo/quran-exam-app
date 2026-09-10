@@ -29,7 +29,8 @@ class ManifestExam {
       throw const FormatException('manifest exam: title مطلوب وغير فارغ');
     }
     if (file is! String ||
-        !RegExp(r'^[A-Za-z0-9_./-]+\.json$').hasMatch(file)) {
+        !RegExp(r'^[A-Za-z0-9_./-]+\.json$').hasMatch(file) ||
+        file.split('/').contains('..')) {
       throw const FormatException(
           'manifest exam: file مسار JSON صالح مثل exams/quran_qalon.json');
     }

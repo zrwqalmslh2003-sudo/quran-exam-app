@@ -44,19 +44,19 @@ class GithubContentSource {
       final request = await client.getUrl(url);
       request.headers.set(HttpHeaders.acceptHeader, 'application/json');
       final response = await request.close().timeout(_timeout);
-      final bytes = <int>[];
-      await for (final chunk in response) {
-        bytes.addAll(chunk);
-        if (bytes.length > maxBytes) {
-          throw ContentFetchException('حجم الاستجابة يتجاوز الحد المسموح');
-        }
-      }
       if (response.statusCode != HttpStatus.ok) {
         throw ContentFetchException(
           'فشل جلب المحتوى (HTTP ${response.statusCode})',
           statusCode: response.statusCode,
           url: url.toString(),
         );
+      }
+      final bytes = <int>[];
+      await for (final chunk in response) {
+        bytes.addAll(chunk);
+        if (bytes.length > maxBytes) {
+          throw ContentFetchException('حجم الاستجابة يتجاوز الحد المسموح');
+        }
       }
       return bytes;
     } finally {

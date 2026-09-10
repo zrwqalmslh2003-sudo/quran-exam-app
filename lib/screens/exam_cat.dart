@@ -63,6 +63,9 @@ class _ExamCatScreenState extends State<ExamCatScreen> {
         _selection
           ..clear()
           ..add(i);
+        _answeredCorrectly = _question.isCorrectFor(_selection);
+        _revealed = true;
+        if (_answeredCorrectly) _score += _question.points;
       }
     });
   }
