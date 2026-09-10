@@ -9,6 +9,10 @@ class ManifestExam {
     required this.file,
     required this.sha256,
     this.category,
+    this.categoryId,
+    this.subcategoryId,
+    this.newCategoryName,
+    this.newSubcategoryName,
     this.questionCount,
     this.updatedAt,
   });
@@ -42,6 +46,26 @@ class ManifestExam {
     if (category != null && category is! String) {
       throw const FormatException('manifest exam: category يجب أن يكون نصاً');
     }
+    final categoryId = json['categoryId'];
+    if (categoryId != null && (categoryId is! int || categoryId < 1)) {
+      throw const FormatException('manifest exam: categoryId يجب أن يكون عدداً موجباً');
+    }
+    final subcategoryId = json['subcategoryId'];
+    if (subcategoryId != null && (subcategoryId is! int || subcategoryId < 1)) {
+      throw const FormatException('manifest exam: subcategoryId يجب أن يكون عدداً موجباً');
+    }
+    final newCategoryName = json['newCategoryName'];
+    if (newCategoryName != null || json.containsKey('newCategoryName')) {
+      if (newCategoryName is! String || newCategoryName.trim().isEmpty) {
+        throw const FormatException('manifest exam: newCategoryName يجب أن يكون اسماً غير فارغ');
+      }
+    }
+    final newSubcategoryName = json['newSubcategoryName'];
+    if (newSubcategoryName != null || json.containsKey('newSubcategoryName')) {
+      if (newSubcategoryName is! String || newSubcategoryName.trim().isEmpty) {
+        throw const FormatException('manifest exam: newSubcategoryName يجب أن يكون اسماً غير فارغ');
+      }
+    }
     final updatedAt = json['updatedAt'];
     if (updatedAt != null && updatedAt is! String) {
       throw const FormatException('manifest exam: updatedAt يجب أن يكون نصاً');
@@ -57,6 +81,10 @@ class ManifestExam {
       file: file,
       sha256: sha256.toLowerCase(),
       category: category as String?,
+      categoryId: categoryId as int?,
+      subcategoryId: subcategoryId as int?,
+      newCategoryName: (newCategoryName as String?)?.trim(),
+      newSubcategoryName: (newSubcategoryName as String?)?.trim(),
       questionCount: count is int && count >= 0 ? count : null,
       updatedAt: updatedAt as String?,
     );
@@ -68,6 +96,10 @@ class ManifestExam {
   final String file;
   final String sha256;
   final String? category;
+  final int? categoryId;
+  final int? subcategoryId;
+  final String? newCategoryName;
+  final String? newSubcategoryName;
   final int? questionCount;
   final String? updatedAt;
 
@@ -80,6 +112,10 @@ class ManifestExam {
         'file': file,
         'sha256': sha256,
         if (category != null) 'category': category,
+        if (categoryId != null) 'categoryId': categoryId,
+        if (subcategoryId != null) 'subcategoryId': subcategoryId,
+        if (newCategoryName != null) 'newCategoryName': newCategoryName,
+        if (newSubcategoryName != null) 'newSubcategoryName': newSubcategoryName,
         if (questionCount != null) 'questionCount': questionCount,
         if (updatedAt != null) 'updatedAt': updatedAt,
       };

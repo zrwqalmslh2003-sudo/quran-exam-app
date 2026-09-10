@@ -119,6 +119,49 @@ void main() {
         throwsFormatException,
       );
     });
+
+    test('حقول hierarchy الاختيارية تُحفظ وتُستعاد', () {
+      final manifest = ContentManifest.fromJson({
+        'schemaVersion': 1,
+        'contentVersion': 1,
+        'exams': [
+          {
+            ..._noDupFixture(),
+            'categoryId': 1,
+            'subcategoryId': 1,
+            'newCategoryName': 'علوم القرآن',
+            'newSubcategoryName': 'مبادئ التجويد',
+          }
+        ],
+      });
+      final exam = manifest.exams.single;
+      expect(exam.categoryId, 1);
+      expect(exam.subcategoryId, 1);
+      expect(exam.newCategoryName, 'علوم القرآن');
+      expect(exam.newSubcategoryName, 'مبادئ التجويد');
+      expect(ContentManifest.fromJson(manifest.toJson()).exams.single.toJson(),
+          exam.toJson());
+    });
+
+    test('قيم hierarchy غير الصالحة تُرفض', () {
+      final base = _noDupFixture();
+      expect(
+        () => ContentManifest.fromJson({
+          'schemaVersion': 1,
+          'contentVersion': 1,
+          'exams': [{...base, 'categoryId': 0}],
+        }),
+        throwsFormatException,
+      );
+      expect(
+        () => ContentManifest.fromJson({
+          'schemaVersion': 1,
+          'contentVersion': 1,
+          'exams': [{...base, 'newCategoryName': ' '}],
+        }),
+        throwsFormatException,
+      );
+    });
   });
 
   group('مقارنة الإصدارات', () {

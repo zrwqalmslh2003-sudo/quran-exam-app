@@ -40,6 +40,8 @@ class UpdateManager {
         return;
       }
 
+      _validateHierarchyReferences(repo, remoteManifest.exams);
+
       final staged = <RemoteExamPayload>[];
       for (final exam in remoteManifest.exams) {
         final localVersion = await repo.remoteExamVersion(exam.id);
@@ -110,6 +112,46 @@ class UpdateManager {
       version: remoteExam.version,
       payload: raw,
     );
+  }
+
+  static void _validateHierarchyReferences(
+    SQLiteExamRepository repo,
+    List<ManifestExam> exams,
+  ) {
+    final categories = repo.table('categories')
+        .where((row) => row['is_active'] == 1)
+        .map((row) => row['id'])
+        .whereType<int>()
+        .toSet();
+    final subcategories = <int, int>{};
+    for (final row in repo.table('subcategories')) {
+      final id = row['id'];
+      final parent = row['category_id'];
+      if (row['is_active'] == 1 && id is int && parent is int) {
+        subcategories[id] = parent;
+      }
+    }
+    for (final exam in exams) {
+      final categoryExists = exam.categoryId != null && categories.contains(exam.categoryId);
+      if (exam.categoryId != null && !categoryExists && exam.newCategoryName == null) {
+        throw FormatException('مرجع categoryId غير موجود للاختبار ${exam.id}');
+      }
+      if (exam.subcategoryId != null) {
+        final parent = subcategories[exam.subcategoryId];
+        if (parent == null && exam.newSubcategoryName == null) {
+          throw FormatException('مرجع subcategoryId غير موجود للاختبار ${exam.id}');
+        }
+        if (parent != null && exam.categoryId != null && categoryExists && parent != exam.categoryId) {
+          throw FormatException('علاقة category/subcategory غير صالحة للاختبار ${exam.id}');
+        }
+      }
+      if (exam.newSubcategoryName != null &&
+          exam.categoryId == null &&
+          exam.newCategoryName == null &&
+          exam.subcategoryId == null) {
+        throw FormatException('الـsubcategory الجديد بلا category أب للاختبار ${exam.id}');
+      }
+    }
   }
 
   static void _validateQuestion(Object? raw) {
