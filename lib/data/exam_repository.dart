@@ -29,6 +29,9 @@ abstract class ExamRepository {
 
   /// اختبار آيات مولّد (الآية → أي سورة؟) ضمن ربع معيّن، حتى الحد المطلوب.
   Future<List<AyahQuestion>> ayahExam(int quarterId, {required int limit});
+
+  /// خطاف للاختبارات فقط — يحقن مصدراً وهمياً دون مسّ SQLite.
+  static void debugSetInstanceForTest(ExamRepository? repo) => _instance = repo;
 }
 
 /// مصدر محلي — يقرأ من ملفات JSON المضمّنة في الحزمة.
