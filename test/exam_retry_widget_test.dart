@@ -31,10 +31,10 @@ class _FakeExamRepository implements ExamRepository {
       SurahPick(4, 'النساء'),
       SurahPick(3, 'آل عمران'),
     ];
-    return [
-      AyahQuestion(const Ayah(1, 2, 'البقرة', 1, 'الم ١', null), q1),
+    return const [
+      AyahQuestion(Ayah(1, 2, 'البقرة', 1, 'الم ١', null), q1),
       AyahQuestion(
-          const Ayah(2, 1, 'الفاتحة', 1, 'بِسْمِ اللهِ الرَّحْمَٰنِ الرَّحِيمِ',
+          Ayah(2, 1, 'الفاتحة', 1, 'بِسْمِ اللهِ الرَّحْمَٰنِ الرَّحِيمِ',
               null),
           q2),
     ].take(limit).toList();

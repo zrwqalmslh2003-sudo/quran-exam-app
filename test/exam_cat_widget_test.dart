@@ -20,11 +20,11 @@ void main() {
       points: 1,
     );
 
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(const MaterialApp(
       home: ExamCatScreen(
         topicId: 1,
         label: 'اختبار تجريبي',
-        questions: const [question],
+        questions: [question],
       ),
     ));
     await tester.pump();
