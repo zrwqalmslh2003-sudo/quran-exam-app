@@ -562,7 +562,8 @@ class SQLiteExamRepository implements ExamRepository, ExamCatalogRepository, Tab
   }
 
   /// معرّفات الاختبارات البعيدة النشطة المؤهلة للاختيار العشوائي
-  /// (أصبحت active وجاءت من manifest يحمل `includeInRandom: true`).
+  /// (أصبحت active وجاءت من manifest يحمل `includeInRandom: true` **ومرجعاً
+  /// محلولاً للتصنيف**).
   ///
   /// الاختبارات المفعّلة عبر مسار [storeRemoteExam] الموروث أو المحتوى
   /// القديم بلا حقل `includeInRandom` لا تظهر أبداً هنا — سلوك v1.5.1 محفوظ.
@@ -578,7 +579,7 @@ class SQLiteExamRepository implements ExamRepository, ExamCatalogRepository, Tab
       final rows = await _db.query(
         'remote_exam_hierarchy',
         columns: ['exam_id'],
-        where: 'include_in_random = 1',
+        where: 'include_in_random = 1 AND category_reference IS NOT NULL',
       );
       return rows
           .map((r) => r['exam_id'] as String?)

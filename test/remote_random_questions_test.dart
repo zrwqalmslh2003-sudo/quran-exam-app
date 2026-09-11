@@ -85,6 +85,7 @@ void main() {
           examId: 'tajweed_opted_in',
           version: 1,
           payload: _quranGeneralPayload.replaceAll('quran_general', 'tajweed_opted_in'),
+          categoryId: 1,
           includeInRandom: true,
         ),
       ],
@@ -189,5 +190,139 @@ void main() {
       expect(q.options.length, 4);
       expect(q.correctIndex, inInclusiveRange(0, 3));
     }
+  });
+
+  group('Step 4 — opt-in edge boundaries', () {
+    const altPayload = '''
+{
+  "schemaVersion": 1,
+  "id": "tajweed",
+  "version": 1,
+  "title": "التجويد — اختبار تجريبي",
+  "questions": [
+    {"id": "t1", "type": "single_choice", "prompt": "حكم الوقف على باء بسم الله؟", "options": ["وجوب", "كراهة", "صحة", "جواز"], "correctAnswer": 2},
+    {"id": "t2", "type": "single_choice", "prompt": "النون الساكنة والتنوين حكمهما؟", "options": ["إظهار فقط", "إخفاء فقط", "إقلاب فقط", "إظهار أو إخفاء أو إقلاب"], "correctAnswer": 3},
+    {"id": "t3", "type": "single_choice", "prompt": "أي لغة برمجة من هذه؟", "options": ["C", "Java", "Python", "Dart"], "correctAnswer": 3}
+  ]
+}
+''';
+
+    test('1. includeInRandom=true يظهر عبر استدعاءات متعددة (إحصائي)', () async {
+      final dir = _tmpDir();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final repo = await _openRepo(dir, 'app');
+      addTearDown(repo.close);
+      await repo.applyRemoteUpdate(
+        exams: [
+          RemoteExamPayload(
+            examId: 'opted_a',
+            version: 1,
+            payload: altPayload.replaceAll('tajweed', 'opted_a'),
+            categoryId: 1,
+            includeInRandom: true,
+          ),
+        ],
+        contentVersion: 2,
+      );
+
+      final remoteTexts = {'حكم الوقف على باء بسم الله؟', 'النون الساكنة والتنوين حكمهما؟', 'أي لغة برمجة من هذه؟'};
+      for (var i = 0; i < 10; i++) {
+        final qs = await repo.randomQuestions(10);
+        expect(qs.map((q) => q.text).toSet(), containsAll(remoteTexts),
+            reason: 'الاستدعاء ${i + 1} من 10 يجب أن يحتوي أسئلة الاختبار البعيد المؤهل');
+      }
+    });
+
+    test('2. includeInRandom=false أو غائب لا يظهر رغم التفعيل الكامل', () async {
+      final dir = _tmpDir();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final repo = await _openRepo(dir, 'app');
+      addTearDown(repo.close);
+      // تفعيل عبر المسار الموروث (بلا includeInRandom):
+      await repo.storeRemoteExam('v1_legacy', 1, altPayload.replaceAll('tajweed', 'v1_legacy'));
+      await repo.activateRemoteExam('v1_legacy', 1);
+
+      final store = await AppDataStore.instance;
+      final localTexts = store.table('questions').map((r) => r['text']).toSet();
+      final qs = await repo.randomQuestions(10);
+      expect(qs, isNotEmpty);
+      expect(qs.every((q) => localTexts.contains(q.text)), isTrue,
+          reason: 'لا يجب أن تظهر أسئلة الاختبار البعيد غير المؤهل');
+    });
+
+    test('3. صفر اختبارات مؤهلة → سلوك v1.5.1 الأصلي (محلي فقط)', () async {
+      final dir = _tmpDir();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final repo = await _openRepo(dir, 'app');
+      addTearDown(repo.close);
+      // لا أي اختبار بعيد مخزّن.
+
+      final store = await AppDataStore.instance;
+      final localTexts = store.table('questions').map((r) => r['text']).toSet();
+      final qs = await repo.randomQuestions(5);
+      expect(qs.length, 5);
+      expect(qs.every((q) => localTexts.contains(q.text)), isTrue);
+    });
+
+    test('4. مؤهل عشوائياً لكن تصنيفه غير محلول (category بلا مرجع) → مستبعد',
+        () async {
+      final dir = _tmpDir();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final repo = await _openRepo(dir, 'app');
+      addTearDown(repo.close);
+      // يصل جسمه مؤهلاً عشوائياً (includeInRandom: true) لكن بلا أي مرجع
+      // category — مرجع NULL في سطر hierarchy — فيُستبعد بشكل دفاعي:
+      await repo.applyRemoteUpdate(
+        exams: [
+          RemoteExamPayload(
+            examId: 'unmapped_optin',
+            version: 1,
+            payload: altPayload.replaceAll('tajweed', 'unmapped_optin'),
+            includeInRandom: true,
+          ),
+        ],
+        contentVersion: 2,
+      );
+
+      final store = await AppDataStore.instance;
+      final localTexts = store.table('questions').map((r) => r['text']).toSet();
+      final qs = await repo.randomQuestions(10);
+      expect(qs, isNotEmpty);
+      expect(qs.every((q) => localTexts.contains(q.text)), isTrue,
+          reason: 'اختبار بلا مرجع category محلول يُستبعد بلا استثناء');
+    });
+
+    test('5. حمولة تالفة واحدة وسط اختبارات مؤهلة → البقية تظهر بلا استثناء', () async {
+      final dir = _tmpDir();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final repo = await _openRepo(dir, 'app');
+      addTearDown(repo.close);
+      await repo.applyRemoteUpdate(
+        exams: [
+          const RemoteExamPayload(
+            examId: 'corrupt_one',
+            version: 1,
+            payload: 'NOT_JSON',
+            categoryId: 1,
+            includeInRandom: true,
+          ),
+          RemoteExamPayload(
+            examId: 'valid_one',
+            version: 1,
+            payload: altPayload.replaceAll('tajweed', 'valid_one'),
+            categoryId: 1,
+            includeInRandom: true,
+          ),
+        ],
+        contentVersion: 2,
+      );
+
+      final validTexts = {'حكم الوقف على باء بسم الله؟', 'النون الساكنة والتنوين حكمهما؟', 'أي لغة برمجة من هذه؟'};
+      for (var i = 0; i < 5; i++) {
+        final qs = await repo.randomQuestions(10);
+        expect(qs.map((q) => q.text).toSet(), containsAll(validTexts),
+            reason: 'الاستدعاء ${i + 1}: الحمولة التالفة لا تمنع ظهور الباقية');
+      }
+    });
   });
 }
