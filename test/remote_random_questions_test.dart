@@ -74,6 +74,49 @@ void main() {
     expect(qs.every((q) => localTexts.contains(q.text)), isTrue);
   });
 
+  test('اختبار بعيد مع includeInRandom يظهر بجانب المحتوى المحلي', () async {
+    final dir = _tmpDir();
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final repo = await _openRepo(dir, 'app');
+    addTearDown(repo.close);
+    await repo.applyRemoteUpdate(
+      exams: [
+        RemoteExamPayload(
+          examId: 'tajweed_opted_in',
+          version: 1,
+          payload: _quranGeneralPayload.replaceAll('quran_general', 'tajweed_opted_in'),
+          includeInRandom: true,
+        ),
+      ],
+      contentVersion: 2,
+    );
+
+    final qs = await repo.randomQuestions(10);
+    expect(qs.map((q) => q.text), contains('أول ما نزل من القرآن؟'));
+    expect(await repo.randomIncludedRemoteExamIds(), {'tajweed_opted_in'});
+  });
+
+  test('includeInRandom لا يعمل مع categoryId محدد', () async {
+    final dir = _tmpDir();
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final repo = await _openRepo(dir, 'app');
+    addTearDown(repo.close);
+    await repo.applyRemoteUpdate(
+      exams: [
+        RemoteExamPayload(
+          examId: 'tajweed_scoped',
+          version: 1,
+          payload: _quranGeneralPayload.replaceAll('quran_general', 'tajweed_scoped'),
+          includeInRandom: true,
+        ),
+      ],
+      contentVersion: 2,
+    );
+
+    final qs = await repo.randomQuestions(10, categoryId: 1);
+    expect(qs.every((q) => q.text != 'أول ما نزل من القرآن؟'), isTrue);
+  });
+
   test('categoryId لا يعيد محتوى quran_general غير المصنف', () async {
     final dir = _tmpDir();
     addTearDown(() => dir.deleteSync(recursive: true));

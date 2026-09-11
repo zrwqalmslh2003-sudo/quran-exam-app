@@ -1101,23 +1101,41 @@ class SQLiteExamRepository implements ExamRepository, ExamCatalogRepository, Tab
     int count, {
     int? categoryId,
   }) async {
-    // quran_general is the only remote random exam until v1.6 introduces
-    // explicit catalog/exam selection. A category-scoped request must use the
-    // local picker because this payload has no category contract yet.
+    // الطلب المقيّد بتصنيف يبقى محلياً؛ لا نخلط remote exams في نطاق category.
     if (categoryId != null) return null;
     try {
-      final rows = await _db.query(
+      final eligible = await randomIncludedRemoteExamIds();
+      final activeRows = await _db.query(
         'remote_exams',
-        columns: ['payload'],
-        where: 'exam_id = ? AND is_active = 1',
-        whereArgs: ['quran_general'],
-        orderBy: 'activated_at DESC',
+        columns: ['exam_id', 'payload'],
+        where: 'is_active = 1',
+        orderBy: 'activated_at ASC, exam_id ASC',
       );
-      if (rows.isEmpty) return null;
-      final payload = rows.first['payload'];
-      if (payload is! String || payload.isEmpty) return null;
-      final questions = _parseRemoteQuestions(payload);
-      return questions.take(count).toList();
+      final ids = <String>[];
+      // التوافق مع v1.5.1: quran_general النشط هو المصدر الأساسي القديم،
+      // حتى لو كان manifest القديم لا يحتوي includeInRandom.
+      for (final row in activeRows) {
+        if (row['exam_id'] == 'quran_general') ids.add('quran_general');
+      }
+      ids.addAll((eligible.toList()..sort()).where((id) => id != 'quran_general'));
+      if (ids.isEmpty) return null;
+
+      final questions = <Question>[];
+      for (final id in ids) {
+        final row = activeRows.firstWhere(
+          (candidate) => candidate['exam_id'] == id,
+          orElse: () => const <String, Object?>{},
+        );
+        final payload = row['payload'];
+        if (payload is! String || payload.isEmpty) continue;
+        try {
+          questions.addAll(_parseRemoteQuestions(payload));
+        } catch (_) {
+          // حمولة واحدة تالفة لا تمنع الاستفادة من بقية المصادر النشطة.
+        }
+        if (questions.length >= count) break;
+      }
+      return questions.isEmpty ? null : questions.take(count).toList();
     } catch (_) {
       return null;
     }
