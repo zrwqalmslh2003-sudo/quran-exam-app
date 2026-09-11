@@ -31,7 +31,7 @@ RemoteExamPayload _exam(
   int? subcategoryId,
   String? newCategoryName,
   String? newSubcategoryName,
-  bool? includeInRandom,
+  bool includeInRandom = false,
 }) {
   return RemoteExamPayload(
     examId: id,
