@@ -122,6 +122,14 @@ manifest.json  →  فهرس كل الاختبارات + رقم الإصدار �
 | `subcategoryId` | int ≥ 1 | مرجع subcategory محلية فعالة | يجب أن يشير لمحلي فعال |
 | `newCategoryName` | string | إنشاء category بعيدة | يُرفض إذا كان فارغاً/مبيّضاً |
 | `newSubcategoryName` | string | إنشاء subcategory بعيدة تحت parent | تتطلب `categoryId` أو `newCategoryName` (أو `subcategoryId` كأب إلى category) |
+| `includeInRandom` | boolean اختياري | السماح بإدراج الاختبار في `randomQuestions` العامة | لا يُقبل عملياً إلا مع category محلولة، والقيمة الافتراضية `false` |
+
+`includeInRandom` هو اشتراك صريح في العشوائية العامة، وليس بديلاً عن اختيار
+اختبار محدد من الكتالوج. عند غياب الحقل أو ضبطه على `false` يبقى الاختبار
+قابلاً للاكتشاف والفتح من الكتالوج، لكنه لا يدخل `randomQuestions` العامة.
+ولا تُستخدم الاختبارات البعيدة في طلب عشوائي مقيّد بـ`categoryId`؛ ذلك المسار
+يبقى محلياً فقط. الاختبار القديم `quran_general` يحافظ على سلوك التوافق
+السابق عند تفعيله.
 
 ### قواعد الهوية (Deterministic Identity)
 
@@ -146,6 +154,21 @@ manifest.json  →  فهرس كل الاختبارات + رقم الإصدار �
 | Step 3 | دمج remote exams في الملاحة (Categories→Subcategories→Topics) — `ExamCatScreen.topicId` أصبح اختيارياً وكل remote exam يُفتح بـ `examId` بلا `topicId: 0` | ✅ منجز |
 | Step 4 | إخراج `ExamCatalogScreen` من الملاحة (hero + «التصنيفات» → `CategoriesScreen`) | ✅ منجز |
 | Step 5 | اختبارات شاملة بهويات حقيقية | ✅ منجز |
+
+## Phase 3 — الاشتراك الصريح في العشوائية
+
+أضيف الحقل التراكمي `includeInRandom` إلى عنصر الاختبار في `manifest.json`.
+لا يرفع ذلك `schemaVersion`، لأن الحقل اختياري ومتوافق مع manifests القديمة.
+تتحقق طبقة التحميل من النوع المنطقي، وتخزّن القيمة في SQLite داخل علاقة
+`remote_exam_hierarchy` مع التفعيل الذري للاختبار. القيمة الافتراضية الآمنة هي
+`false`، لذلك لا تتحول الاختبارات القديمة أو الاختبارات المفعّلة عبر المسار
+الموروث إلى مصادر عشوائية دون اشتراك صريح.
+
+تضم `randomQuestions` الاختبارات البعيدة المؤهلة فقط عندما يكون الاختبار نشطاً،
+وتكون علاقته بـcategory محلولة، وتكون `includeInRandom = true`. أما الطلبات
+المقيدة بـ`categoryId`، و`questionsForTopic`، و`ayahExam`، فتبقى محلية ولا تختلط
+بالمحتوى البعيد. إذا كانت حمولة بعيدة واحدة تالفة، تُتجاهل بأمان ولا تمنع
+المصادر البعيدة المؤهلة الأخرى أو fallback المحلي.
 
 ## الديون التقنية (Tech Debt)
 
