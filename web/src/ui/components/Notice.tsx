@@ -1,0 +1,1 @@
+export function Notice({message,retry}:{message:string;retry?:()=>void}){return <section className="notice"><div className="notice-icon">!</div><h2>تعذر عرض المحتوى</h2><p>{message}</p>{retry&&<button className="primary" onClick={retry}>إعادة المحاولة</button>}</section>}
