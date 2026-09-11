@@ -1,3 +1,4 @@
+// @vitest-environment node
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {ContentRepository} from '../content/repository';
 import {resolveCategoryTree,scoreQuestion} from '../domain/content';

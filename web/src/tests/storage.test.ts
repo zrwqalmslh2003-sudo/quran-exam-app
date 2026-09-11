@@ -1,3 +1,4 @@
+// @vitest-environment node
 import {beforeEach,describe,expect,it} from 'vitest';
 import {getUserId} from '../storage/user';
 import {clearSession,loadSession,saveSession} from '../storage/session';
