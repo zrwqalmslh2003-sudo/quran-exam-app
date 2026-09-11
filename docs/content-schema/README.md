@@ -123,6 +123,15 @@ manifest.json  →  فهرس كل الاختبارات + رقم الإصدار �
 | `newCategoryName` | string | إنشاء category بعيدة | يُرفض إذا كان فارغاً/مبيّضاً |
 | `newSubcategoryName` | string | إنشاء subcategory بعيدة تحت parent | تتطلب `categoryId` أو `newCategoryName` (أو `subcategoryId` كأب إلى category) |
 
+### شرط إلزامي: اسم قابل للعرض مع كل معرّف رقمي
+
+أي عنصر في `exams[]` يضع `categoryId` (أو `subcategoryId`) **يجب أن يتضمن أيضًا**
+حقل اسم قابل للعرض: `newCategoryName` (أو `newSubcategoryName` مطابقًا لأب
+subcategory). السبب: العملاء الذين لا يملكون جدول تصنيفات محليًا (عميل الويب)
+لا يستطيعون تحويل معرّف رقمي إلى اسم بمفردهم، وسيعرضون «غير مصنف»/uncategorized
+لنفس الاختبار بينما يعرض التطبيق الأصلي الاسم الصحيح. الاسم يستخدم للعرض فقط ولا
+يغير المرجع، الذي يظل محدّدًا بقواعد الهوية أدناه (`local:c:<id>` و`local:sc:<id>`).
+
 ### قواعد الهوية (Deterministic Identity)
 
 - category محلية تُحل إلى reference ثابت `local:c:<id>`.

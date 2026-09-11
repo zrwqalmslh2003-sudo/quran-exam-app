@@ -91,5 +91,9 @@ VITE_CONTENT_BASE_URL=https://example.invalid/content pnpm dev
 
 ## القيود المعروفة
 
-المستودع البعيد الحالي لا يضع `categoryId` أو `newCategoryName` لكل عنصر؛ لذلك
-يُستخدم حقل `category` الموجود كمرجع عرض متوافق.
+المستودع البعيد الحالي لا يضع `categoryId`/`newCategoryName` لكل عنصر؛ لذلك يُستخدم
+حقل `category` الموجود كمرجع عرض متوافق (يُحل إلى `remote:c:<slug(name)>`).
+المعالجة المطلوبة للمعرفات الرقمية بدون اسم أصبحت قاعدة موثّقة في عقد المحتوى
+المشترك: أي عنصر يضع `categoryId`/`subcategoryId` يجب أن يتضمن اسمًا قابلًا للعرض
+(`newCategoryName`/`newSubcategoryName`) — انظر `docs/content-schema/README.md`
+قسم «شجرة التصنيفات البعيدة» (شرط إلزامي: اسم قابل للعرض مع كل معرّف رقمي).
