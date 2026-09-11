@@ -485,6 +485,11 @@ void main() {
           'CREATE TABLE categories (id INTEGER PRIMARY KEY, name TEXT, emoji TEXT, sort_order INTEGER, is_active INTEGER)');
       await old.execute(
           'CREATE TABLE subcategories (id INTEGER PRIMARY KEY, category_id INTEGER, name TEXT, emoji TEXT, sort_order INTEGER, is_active INTEGER)');
+      for (final name in const [
+        'topics', 'questions', 'chapters', 'verses', 'tafseer',
+      ]) {
+        await old.execute('CREATE TABLE $name (id INTEGER)');
+      }
       await old.execute(
           'CREATE TABLE remote_exams (exam_id TEXT NOT NULL, version INTEGER NOT NULL, payload TEXT NOT NULL, is_active INTEGER NOT NULL DEFAULT 0, activated_at TEXT, created_at TEXT NOT NULL, UNIQUE(exam_id, version))');
       await old.execute(
