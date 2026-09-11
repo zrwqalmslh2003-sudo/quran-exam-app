@@ -163,6 +163,43 @@ void main() {
         throwsFormatException,
       );
     });
+
+    test('includeInRandom: غائب ← null، صريح true/false محفوظ، غير boolean يُرفض', () {
+      final missing = ContentManifest.fromJson({
+        'schemaVersion': 1,
+        'contentVersion': 1,
+        'exams': [_noDupFixture()],
+      });
+      expect(missing.exams.single.includeInRandom, isNull,
+          reason: 'الحقل الاختياري غائب ← null (يُفسَّر لاحقاً كـ false)');
+
+      final opted = ContentManifest.fromJson({
+        'schemaVersion': 1,
+        'contentVersion': 1,
+        'exams': [{..._noDupFixture(), 'includeInRandom': true}],
+      });
+      expect(opted.exams.single.includeInRandom, isTrue);
+
+      final excluded = ContentManifest.fromJson({
+        'schemaVersion': 1,
+        'contentVersion': 1,
+        'exams': [{..._noDupFixture(), 'includeInRandom': false}],
+      });
+      expect(excluded.exams.single.includeInRandom, isFalse,
+          reason: 'صريح false يتصرّف كالغائب');
+
+      expect(ContentManifest.fromJson(opted.toJson()).exams.single.toJson(),
+          opted.exams.single.toJson(), reason: 'الدورة toJson/fromJson تحفظ الحقل');
+
+      expect(
+        () => ContentManifest.fromJson({
+          'schemaVersion': 1,
+          'contentVersion': 1,
+          'exams': [{..._noDupFixture(), 'includeInRandom': 'yes'}],
+        }),
+        throwsFormatException,
+      );
+    });
   });
 
   group('مقارنة الإصدارات', () {

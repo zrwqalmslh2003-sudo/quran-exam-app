@@ -487,5 +487,30 @@ void main() {
           reason: 'المرجع المحلي الحقيقي لا يبني شجرة بعيدة');
       expect(await srepo.manifestMetaValue('manifest_content_version'), '23');
     });
+
+    test('includeInRandom=true بلا مرجع category → validation_failure قبل التخزين',
+        () async {
+      routes['manifest.json'] = manifestJsonWithHierarchy(
+        contentVersion: 24,
+        examEntries: [
+          entry({
+            'id': 'random_orphan', 'version': 1, 'title': 'يتيم عشوائي',
+            'file': 'exams/random_orphan.json',
+            'includeInRandom': true,
+          }),
+        ],
+      );
+      routes['random_orphan.json'] =
+          examJson(id: 'random_orphan', version: 1);
+
+      final diagnostics = <String>[];
+      await UpdateManager.checkForUpdates(
+        source: source, repo: srepo, onDiagnostic: diagnostics.add,
+      );
+
+      expect(diagnostics, ['validation_failure']);
+      expect(await snapshot('remote_exams'), isEmpty);
+      expect(await srepo.remoteExamVersion('random_orphan'), isNull);
+    });
   });
 }

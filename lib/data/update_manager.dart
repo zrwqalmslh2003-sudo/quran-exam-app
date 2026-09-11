@@ -115,6 +115,7 @@ class UpdateManager {
       subcategoryId: remoteExam.subcategoryId,
       newCategoryName: remoteExam.newCategoryName,
       newSubcategoryName: remoteExam.newSubcategoryName,
+      includeInRandom: remoteExam.includeInRandom ?? false,
     );
   }
 
@@ -154,6 +155,13 @@ class UpdateManager {
           exam.newCategoryName == null &&
           exam.subcategoryId == null) {
         throw FormatException('الـsubcategory الجديد بلا category أب للاختبار ${exam.id}');
+      }
+      if (exam.includeInRandom == true &&
+          exam.categoryId == null &&
+          exam.newCategoryName == null &&
+          exam.subcategoryId == null) {
+        throw FormatException(
+            'includeInRandom يتطلب مرجع category صالح للاختبار ${exam.id}');
       }
     }
   }

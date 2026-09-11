@@ -15,6 +15,7 @@ class ManifestExam {
     this.newSubcategoryName,
     this.questionCount,
     this.updatedAt,
+    this.includeInRandom,
   });
 
   factory ManifestExam.fromJson(Map<String, Object?> json) {
@@ -74,6 +75,11 @@ class ManifestExam {
     if (count != null && count is! int) {
       throw const FormatException('manifest exam: questionCount يجب أن يكون عدداً');
     }
+    final includeInRandom = json['includeInRandom'];
+    if (includeInRandom != null && includeInRandom is! bool) {
+      throw const FormatException(
+          'manifest exam: includeInRandom يجب أن يكون قيمة منطقية');
+    }
     return ManifestExam(
       id: id,
       version: version,
@@ -87,6 +93,7 @@ class ManifestExam {
       newSubcategoryName: (newSubcategoryName as String?)?.trim(),
       questionCount: count is int && count >= 0 ? count : null,
       updatedAt: updatedAt as String?,
+      includeInRandom: includeInRandom as bool?,
     );
   }
 
@@ -102,6 +109,7 @@ class ManifestExam {
   final String? newSubcategoryName;
   final int? questionCount;
   final String? updatedAt;
+  final bool? includeInRandom;
 
   bool isNewerThan(int local) => version > local;
 
@@ -118,6 +126,7 @@ class ManifestExam {
         if (newSubcategoryName != null) 'newSubcategoryName': newSubcategoryName,
         if (questionCount != null) 'questionCount': questionCount,
         if (updatedAt != null) 'updatedAt': updatedAt,
+        if (includeInRandom != null) 'includeInRandom': includeInRandom,
       };
 }
 

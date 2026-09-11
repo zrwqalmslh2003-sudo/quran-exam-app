@@ -19,6 +19,7 @@ class RemoteExamPayload {
     this.subcategoryId,
     this.newCategoryName,
     this.newSubcategoryName,
+    this.includeInRandom = false,
   });
 
   final String examId;
@@ -30,6 +31,10 @@ class RemoteExamPayload {
   final int? subcategoryId;
   final String? newCategoryName;
   final String? newSubcategoryName;
+
+  /// هل يُسمح بمشاركة هذا الاختبار في الاختيار العشوائي (`randomQuestions`).
+  /// الافتراضي false: لا يصبح بعيدًا أهلاً للعشوائية بمجرد تفعيله.
+  final bool includeInRandom;
 }
 
 /// علاقة exam → شجرة بعيدة (category/subcategory) لاختبار نشط.
