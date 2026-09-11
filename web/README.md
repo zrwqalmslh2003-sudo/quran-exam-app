@@ -59,6 +59,9 @@ pnpm build       # tsc --noEmit && vite build
 pnpm preview
 ```
 
+حجم الحزمة المنتجة ~242KB JS (لـ ~75KB gzip) — مقبول لتطبيق React بدون تقطيع code-splitting؛
+أي تحسين لاحق في الحجم يُدرس في مرحلة منفصلة.
+
 ## مصدر المحتوى
 
 المصدر الافتراضي هو مستودع GitHub العام:
