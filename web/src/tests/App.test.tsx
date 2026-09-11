@@ -49,10 +49,10 @@ describe('App',()=>{
     await user.click(screen.getByRole('button',{name:/quran/}));
     await user.click(await screen.findByRole('button',{name:/اختبار الشريحة/}));
     await screen.findByText('السؤال الأول');
-    await user.click(screen.getByRole('button',{name:/نعم/}));
+    await user.click(screen.getByRole('radio',{name:/نعم/}));
     await user.click(screen.getByRole('button',{name:/التالي/}));
     await screen.findByText('السؤال الثاني');
-    await user.click(screen.getByRole('button',{name:/أربعة/}));
+    await user.click(screen.getByRole('radio',{name:/أربعة/}));
     await user.click(screen.getByRole('button',{name:/إنهاء الاختبار/}));
     expect(await screen.findByText('نتيجتك النهائية')).toBeInTheDocument();
     expect(screen.getByText('1')).toBeInTheDocument();
