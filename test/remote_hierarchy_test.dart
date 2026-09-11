@@ -146,6 +146,39 @@ void main() {
       expect(tree.single.examIds, isEmpty);
       expect(tree.single.subcategories.single.examIds, hasLength(2));
     });
+
+    test('اسم جديد عبر تحديثين منفصلين → نفس المرجع بلا صف ثانٍ', () async {
+      final dir = _tmpDir();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final repo = await _openRepo(dir);
+      addTearDown(repo.close);
+
+      await repo.applyRemoteUpdate(
+        exams: [_exam('exam_u1', newCategoryName: 'التجويد')],
+        contentVersion: 2,
+      );
+      final first = await repo.remoteCategoryTree();
+      expect(first, hasLength(1));
+      expect(first.single.reference, 'remote:c:التجويد');
+
+      // تحديث ثانٍ منفصل (مانفيست أحدث) يعيد إرسال الاسم نفسه —
+      // يجب أن يحل لنفس المرجع بدل إنشاء تصنيف بعيد ثانٍ.
+      await repo.applyRemoteUpdate(
+        exams: [_exam('exam_u2', newCategoryName: 'التجويد')],
+        contentVersion: 3,
+      );
+
+      final rows = await repo.remoteHierarchyRows();
+      expect(rows, hasLength(2));
+      expect(rows.map((r) => r.categoryReference).toSet(),
+          {'remote:c:التجويد'});
+
+      final tree = await repo.remoteCategoryTree();
+      expect(tree, hasLength(1),
+          reason: 'إعادة استخدام الاسم عبر تحديثين → صف واحد');
+      expect(tree.single.reference, 'remote:c:التجويد');
+      expect(tree.single.examIds.toSet(), {'exam_u1', 'exam_u2'});
+    });
   });
 
   group('سلامة التخزين', () {
