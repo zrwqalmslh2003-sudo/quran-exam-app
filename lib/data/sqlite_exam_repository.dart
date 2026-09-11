@@ -108,7 +108,7 @@ class _SubcategoryWrite {
 /// - جدول [remoteExams] يُخزّن محتوى الاختبارات البعيدة كما هو (JSON نصي)
 ///   بنسخة مُفعّلة ومُؤشّر نسخة فقط — لا يتمّ تطبيعها.
 class SQLiteExamRepository implements ExamRepository, ExamCatalogRepository, TableSource {
-  static const _dbVersion = 2;
+  static const _dbVersion = 3;
 
   /// الجداول المنعكسة عن ملفات JSON المضمّنة (نفس الأعمدة تماماً).
   static const tablesToCopy = [
@@ -249,6 +249,22 @@ class SQLiteExamRepository implements ExamRepository, ExamCatalogRepository, Tab
     if (oldVersion < 2) {
       await _createRemoteHierarchyTables(db);
     }
+    if (oldVersion < 3) {
+      await _addIncludeInRandomColumn(db);
+    }
+  }
+
+  /// يضيف عمود `include_in_random` لجدول remote_exam_hierarchy إذا لم يكن
+  /// موجوداً (قواعد v2 قائمة لا تملكه). القواعد الجديدة (v3) تُنشئه أصلاً في
+  /// [_createSchema] فلا يُضاف هنا.
+  static Future<void> _addIncludeInRandomColumn(Database db) async {
+    final hasColumn = await db
+        .rawQuery('PRAGMA table_info(remote_exam_hierarchy)');
+    final exists = hasColumn.any((r) => r['name'] == 'include_in_random');
+    if (!exists) {
+      await db.execute(
+          'ALTER TABLE remote_exam_hierarchy ADD COLUMN include_in_random INTEGER NOT NULL DEFAULT 0');
+    }
   }
 
   /// جداول الشجرة البعيدة (remote_categories/remote_subcategories/
@@ -279,7 +295,8 @@ class SQLiteExamRepository implements ExamRepository, ExamCatalogRepository, Tab
       CREATE TABLE IF NOT EXISTS remote_exam_hierarchy (
         exam_id              TEXT PRIMARY KEY,
         category_reference   TEXT,
-        subcategory_reference TEXT
+        subcategory_reference TEXT,
+        include_in_random    INTEGER NOT NULL DEFAULT 0
       )
     ''');
   }
@@ -544,6 +561,35 @@ class SQLiteExamRepository implements ExamRepository, ExamCatalogRepository, Tab
     }
   }
 
+  /// معرّفات الاختبارات البعيدة النشطة المؤهلة للاختيار العشوائي
+  /// (أصبحت active وجاءت من manifest يحمل `includeInRandom: true`).
+  ///
+  /// الاختبارات المفعّلة عبر مسار [storeRemoteExam] الموروث أو المحتوى
+  /// القديم بلا حقل `includeInRandom` لا تظهر أبداً هنا — سلوك v1.5.1 محفوظ.
+  Future<Set<String>> randomIncludedRemoteExamIds() async {
+    try {
+      final active = await _db.query(
+        'remote_exams',
+        columns: ['exam_id'],
+        where: 'is_active = 1',
+      );
+      if (active.isEmpty) return const {};
+      final activeIds = active.map((r) => r['exam_id'] as String).toSet();
+      final rows = await _db.query(
+        'remote_exam_hierarchy',
+        columns: ['exam_id'],
+        where: 'include_in_random = 1',
+      );
+      return rows
+          .map((r) => r['exam_id'] as String?)
+          .where((id) => id != null && activeIds.contains(id))
+          .cast<String>()
+          .toSet();
+    } catch (_) {
+      return const {};
+    }
+  }
+
   /// شجرة التصنيفات البعيدة (category → subcategories → exams) للاختبارات
   /// النشطة، بأسماء محلولة من المحلية عند مرجع `local:*`.
   Future<List<RemoteCategoryNode>> remoteCategoryTree() async {
@@ -804,7 +850,8 @@ class SQLiteExamRepository implements ExamRepository, ExamCatalogRepository, Tab
 
     final categoryWrites = <String, _CategoryWrite>{};
     final subcategoryWrites = <String, _SubcategoryWrite>{};
-    final hierarchyRows = <({String examId, String? category, String? sub})>[];
+    final hierarchyRows = <
+        ({String examId, String? category, String? sub, bool includeInRandom})>[];
     for (final exam in exams) {
       final resolved = _resolveHierarchy(
         exam,
@@ -818,7 +865,12 @@ class SQLiteExamRepository implements ExamRepository, ExamCatalogRepository, Tab
         subcategoryWrites[subWrite.reference] = subWrite;
       }
       hierarchyRows.add(
-        (examId: exam.examId, category: resolved.category, sub: resolved.sub),
+        (
+          examId: exam.examId,
+          category: resolved.category,
+          sub: resolved.sub,
+          includeInRandom: exam.includeInRandom,
+        ),
       );
     }
 
@@ -887,6 +939,7 @@ class SQLiteExamRepository implements ExamRepository, ExamCatalogRepository, Tab
             'exam_id': row.examId,
             'category_reference': row.category,
             'subcategory_reference': row.sub,
+            'include_in_random': row.includeInRandom ? 1 : 0,
           },
           conflictAlgorithm: ConflictAlgorithm.replace,
         );

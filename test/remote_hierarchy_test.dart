@@ -31,6 +31,7 @@ RemoteExamPayload _exam(
   int? subcategoryId,
   String? newCategoryName,
   String? newSubcategoryName,
+  bool? includeInRandom,
 }) {
   return RemoteExamPayload(
     examId: id,
@@ -40,6 +41,7 @@ RemoteExamPayload _exam(
     subcategoryId: subcategoryId,
     newCategoryName: newCategoryName,
     newSubcategoryName: newSubcategoryName,
+    includeInRandom: includeInRandom,
   );
 }
 
@@ -387,6 +389,45 @@ void main() {
     });
   });
 
+  group('اشتراك عشوائي (includeInRandom)', () {
+    test('opt-in صريح → مؤهل عشوائياً بعد التفعيل، وplain غير مؤهل', () async {
+      final dir = _tmpDir();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final repo = await _openRepo(dir);
+      addTearDown(repo.close);
+
+      await repo.applyRemoteUpdate(
+        exams: [
+          _exam('opted_in', categoryId: 1, includeInRandom: true),
+          _exam('not_opted_in', categoryId: 1),
+        ],
+        contentVersion: 2,
+      );
+
+      expect(await repo.randomIncludedRemoteExamIds(), {'opted_in'});
+    });
+
+    test('opt-in بلا تفعيل فعلّي (is_active=0) لا يُضمّن', () async {
+      final dir = _tmpDir();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final repo = await _openRepo(dir);
+      addTearDown(repo.close);
+
+      await repo.applyRemoteUpdate(
+        exams: [_exam('opted_but_inactive', categoryId: 1, includeInRandom: true)],
+        contentVersion: 2,
+      );
+
+      // applyRemoteUpdate فعّل الاختبار ضمنياً؛ محاكاة الرجوع للتحديث السابق:
+      await repo.applyRemoteUpdate(
+        exams: [_exam('opted_but_inactive', categoryId: 1)],
+        contentVersion: 3,
+      );
+
+      expect(await repo.randomIncludedRemoteExamIds(), isEmpty);
+    });
+  });
+
   group('ترقية المخطط', () {
     test('onUpgrade من v1 → v2 ينشئ جداول hierarchy', () async {
       final dir = _tmpDir();
@@ -427,6 +468,51 @@ void main() {
       );
       final tree = await repo.remoteCategoryTree();
       expect(tree.single.name, 'بعد الترقية');
+    });
+
+    test('onUpgrade من v2 → v3 يضيف include_in_random دون كسر محتوى v2',
+        () async {
+      final dir = _tmpDir();
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final path = '${dir.path}/app.db';
+
+      // قاعدة v2 حقيقية: جداول hierarchy بلا عمود include_in_random.
+      final old = await databaseFactoryFfi.openDatabase(
+        path,
+        options: OpenDatabaseOptions(version: 2),
+      );
+      await old.execute(
+          'CREATE TABLE categories (id INTEGER PRIMARY KEY, name TEXT, emoji TEXT, sort_order INTEGER, is_active INTEGER)');
+      await old.execute(
+          'CREATE TABLE subcategories (id INTEGER PRIMARY KEY, category_id INTEGER, name TEXT, emoji TEXT, sort_order INTEGER, is_active INTEGER)');
+      await old.execute(
+          'CREATE TABLE remote_exams (exam_id TEXT NOT NULL, version INTEGER NOT NULL, payload TEXT NOT NULL, is_active INTEGER NOT NULL DEFAULT 0, activated_at TEXT, created_at TEXT NOT NULL, UNIQUE(exam_id, version))');
+      await old.execute(
+          'CREATE TABLE remote_exam_hierarchy (exam_id TEXT PRIMARY KEY, category_reference TEXT, subcategory_reference TEXT)');
+      await old.execute(
+          'CREATE TABLE remote_categories (reference TEXT PRIMARY KEY, name TEXT, sort_order INTEGER, is_active INTEGER)');
+      await old.execute(
+          'CREATE TABLE remote_subcategories (reference TEXT PRIMARY KEY, category_reference TEXT, name TEXT, sort_order INTEGER, is_active INTEGER)');
+      await old.execute('CREATE TABLE content_meta (key TEXT PRIMARY KEY, value TEXT)');
+      await old.close();
+
+      final repo = await SQLiteExamRepository.open(
+        factory: databaseFactoryFfi,
+        path: path,
+        bootstrap: false,
+        fallback: LocalExamRepository(await AppDataStore.instance),
+      );
+      addTearDown(repo.close);
+
+      await repo.applyRemoteUpdate(
+        exams: [
+          _exam('legacy_opted', newCategoryName: 'التعليم', includeInRandom: true),
+          _exam('legacy_plain', newCategoryName: 'التعليم'),
+        ],
+        contentVersion: 2,
+      );
+
+      expect(await repo.randomIncludedRemoteExamIds(), {'legacy_opted'});
     });
   });
 }
