@@ -4,7 +4,7 @@ import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import App from '../App';
 
 const manifest={schemaVersion:1,contentVersion:2,exams:[{id:'vertical_exam',version:1,title:'اختبار الشريحة',file:'exams/vertical_exam.json',category:'quran',questionCount:2,sha256:'x'}]};
-const exam={schemaVersion:1,id:'vertical_exam',version:1,title:'اختبار الشريحة',category:'quran',questions:[{id:'q1',type:'single_choice',prompt:'السؤال الأول',options:['نعم','لا'],correctAnswer:0},{id:'q2',type:'single_choice',prompt:'السؤال الثاني',options:['أربعة','خمسة'],correctAnswer:1}]};
+const exam={schemaVersion:1,id:'vertical_exam',version:1,title:'اختبار الشريحة',category:'quran',questions:[{id:'q1',type:'single_choice',prompt:'السؤال الأول',options:['نعم','لا'],correctAnswer:0,explanation:'المرجع: الآية الأولى'},{id:'q2',type:'single_choice',prompt:'السؤال الثاني',options:['أربعة','خمسة'],correctAnswer:1}]};
 
 function stubOkFetch(){vi.stubGlobal('fetch',vi.fn(async(url:string)=>({ok:true,status:200,json:async()=>String(url).endsWith('manifest.json')?manifest:exam})));}
 
@@ -50,7 +50,7 @@ describe('App',()=>{
     await user.click(await screen.findByRole('button',{name:/اختبار الشريحة/}));
     await screen.findByText('السؤال الأول');
     await user.click(screen.getByRole('radio',{name:/نعم/}));
-    await user.click(screen.getByRole('button',{name:/التالي/}));
+    await user.click(screen.getByRole('button',{name:/متابعة/}));
     await screen.findByText('السؤال الثاني');
     await user.click(screen.getByRole('radio',{name:/أربعة/}));
     await user.click(screen.getByRole('button',{name:/إنهاء الاختبار/}));
@@ -79,5 +79,34 @@ describe('App',()=>{
     expect(await screen.findByText('مراجعة آخر نتيجة')).toBeInTheDocument();
     expect(screen.getByText('السؤال الأول')).toBeInTheDocument();
     expect(screen.getByText('الإجابة الصحيحة: الخيار 1')).toBeInTheDocument();
+  });
+
+  it('shows correct feedback and turns the next button into continue',async()=>{
+    stubOkFetch();
+    const user=userEvent.setup();
+    render(<App/>);
+    await user.click(await screen.findByRole('button',{name:/استكشف الاختبارات/}));
+    await user.click(screen.getByRole('button',{name:/quran/}));
+    await user.click(await screen.findByRole('button',{name:/اختبار الشريحة/}));
+    await screen.findByText('السؤال الأول');
+    await user.click(screen.getByRole('radio',{name:/نعم/}));
+    expect(await screen.findByText('✅ إجابة صحيحة')).toBeInTheDocument();
+    expect(screen.getByRole('button',{name:/متابعة/})).toBeInTheDocument();
+    expect(screen.getByRole('radio',{name:/نعم/})).toBeDisabled();
+  });
+
+  it('shows wrong feedback, highlights the correct option and shows the explanation',async()=>{
+    stubOkFetch();
+    const user=userEvent.setup();
+    render(<App/>);
+    await user.click(await screen.findByRole('button',{name:/استكشف الاختبارات/}));
+    await user.click(screen.getByRole('button',{name:/quran/}));
+    await user.click(await screen.findByRole('button',{name:/اختبار الشريحة/}));
+    await screen.findByText('السؤال الأول');
+    await user.click(screen.getByRole('radio',{name:/لا/}));
+    expect(await screen.findByText('❌ إجابة خاطئة')).toBeInTheDocument();
+    expect(screen.getByRole('radio',{name:/نعم/})).toHaveClass('correct');
+    expect(screen.getByRole('radio',{name:/لا/})).toHaveClass('wrong');
+    expect(screen.getByText('المرجع: الآية الأولى')).toBeInTheDocument();
   });
 });
