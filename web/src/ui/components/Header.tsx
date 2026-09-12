@@ -1,1 +1,0 @@
-export function Header({onHome}:{onHome:()=>void}){return <header className="topbar"><button className="brand" onClick={onHome}><span className="brand-mark">ق</span><span>قالون</span></button><span className="tagline">رفقةٌ مع كتاب الله</span></header>}

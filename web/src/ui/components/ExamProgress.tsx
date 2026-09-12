@@ -1,1 +1,0 @@
-export function ExamProgress({index,total}:{index:number;total:number}){return <div className="progress"><i style={{width:`${((index+1)/total)*100}%`}}/></div>}
