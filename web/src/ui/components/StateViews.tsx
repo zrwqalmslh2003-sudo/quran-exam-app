@@ -1,0 +1,1 @@
+export function Unavailable({message,onBack}:{message:string;onBack:()=>void}){return <main className="content"><section className="notice"><div className="notice-icon">!</div><h2>غير متاح</h2><p>{message}</p><button className="primary" onClick={onBack}>العودة للتصنيفات</button></section></main>}

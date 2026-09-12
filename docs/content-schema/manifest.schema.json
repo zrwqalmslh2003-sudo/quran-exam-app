@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://qalon.app/schema/manifest.schema.json",
+  "title": "Content Manifest",
+  "description": "Top-level index of available exams (schemaVersion 1). The app fetches this file first to compare versions before downloading any exam.",
+  "type": "object",
+  "required": ["schemaVersion", "contentVersion", "exams"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Content schema contract version. Must match exam.schema.json schemaVersion."
+    },
+    "contentVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Index-wide content version. Bumped whenever the manifest itself changes."
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO 8601 date of the last content publish."
+    },
+    "exams": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "version", "title", "file", "sha256"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Exam id. Must match the exam file's 'id'."
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Latest published exam content version. Compared with the locally stored version."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Display title."
+          },
+          "file": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_./-]+\\.json$",
+            "description": "Relative path of the exam file in the content repository (e.g. 'exams/quran_qalon.json')."
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{64}$",
+            "description": "Lowercase or uppercase hexadecimal SHA-256 of the exact exam payload bytes."
+          },
+          "category": {
+            "type": "string",
+            "description": "Optional category id for grouping in catalogs."
+          },
+          "questionCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Optional known question count, shown in the UI before download."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date",
+            "description": "Optional publish date of this exam."
+          }
+        }
+      },
+      "uniqueItems": true
+    }
+  }
+}

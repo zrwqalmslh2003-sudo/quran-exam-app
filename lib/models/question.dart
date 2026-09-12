@@ -9,6 +9,7 @@ enum QuestionType {
   static QuestionType from(String s) => switch (s) {
         'poll' => QuestionType.poll,
         'quiz' => QuestionType.quiz,
+        'single_choice' => QuestionType.quiz,
         'true_false' => QuestionType.trueFalse,
         _ => QuestionType.other,
       };
@@ -79,6 +80,51 @@ class Question {
       allowsMultiple: (r['allows_multiple_answers'] as int?) == 1,
       explanation: explanation,
       points: (r['points'] as int?) ?? 1,
+    );
+  }
+
+  /// يحوّل سؤال عقد المحتوى البعيد (schemaVersion 1 مثل quran_general)
+  /// إلى نموذج المحرك. [index] هو ترتيب السؤال داخل الاختبار ويصبح
+  /// معرّفاً رقمياً اصطناعياً. أي مخالفة للعقد ترمي [FormatException].
+  factory Question.fromRemote(Map<String, Object?> json, int index) {
+    final id = json['id'];
+    final prompt = json['prompt'];
+    final rawOptions = json['options'];
+    final correct = json['correctAnswer'];
+    if (id is! String || id.isEmpty) {
+      throw const FormatException('سؤال بعيد: id نصي غير فارغ مطلوب');
+    }
+    if (prompt is! String || prompt.isEmpty) {
+      throw const FormatException('سؤال بعيد: prompt نصي غير فارغ مطلوب');
+    }
+    if (rawOptions is! List ||
+        rawOptions.length < 2 ||
+        rawOptions.any((o) => o is! String || o.isEmpty)) {
+      throw const FormatException(
+          'سؤال بعيد: options قائمة نصوص بأقل من خيارين');
+    }
+    final options = rawOptions.cast<String>();
+    if (correct is! int || correct < 0 || correct >= options.length) {
+      throw const FormatException(
+          'سؤال بعيد: correctAnswer فهرس خيار غير صالح');
+    }
+    final rawPoints = json['points'];
+    final rawExplanation = json['explanation'];
+    return Question(
+      id: index + 1,
+      topicId: 0,
+      order: index,
+      text: prompt,
+      type: QuestionType.from((json['type'] as String?) ?? 'quiz'),
+      options: options,
+      correctOptionId: correct,
+      correctOptionIds: [correct],
+      allowsMultiple: false,
+      explanation:
+          rawExplanation is String && rawExplanation.trim().isNotEmpty
+              ? rawExplanation.trim()
+              : null,
+      points: rawPoints is int && rawPoints >= 1 ? rawPoints : 1,
     );
   }
 

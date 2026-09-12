@@ -1,0 +1,29 @@
+export type QuestionType = 'single_choice' | 'multiple_choice' | 'true_false' | 'ayah';
+export type RawRecord = Record<string, unknown>;
+
+export interface ManifestExam { id:string; version:number; title:string; file:string; sha256:string; category?:string; categoryId?:number; subcategoryId?:number; newCategoryName?:string; newSubcategoryName?:string; includeInRandom?:boolean; questionCount?:number; }
+export interface Manifest { schemaVersion:1; contentVersion:number; exams:ManifestExam[]; }
+export interface Question { id:string; type:QuestionType; prompt:string; options?:string[]; correctAnswer:number|number[]|boolean; explanation?:string; reference?:RawRecord|string; }
+export interface Exam { id:string; version:number; title:string; category?:string; description?:string; questions:Question[]; }
+export interface CategoryNode { reference:string; name:string; subcategories:Map<string, CategoryNode>; exams:ManifestExam[]; }
+
+export class ContentError extends Error { constructor(message:string, public code='invalid_content'){ super(message); this.name='ContentError'; } }
+const str=(v:unknown, label:string) => { if(typeof v!=='string'||!v.trim()) throw new ContentError(`${label} غير صالح`); return v; };
+function question(raw:unknown, index:number):Question {
+  if(!raw || typeof raw!=='object') throw new ContentError(`السؤال ${index+1} تالف`);
+  const r=raw as RawRecord; const id=str(r.id,'معرّف السؤال'); const type=r.type;
+  if(!['single_choice','multiple_choice','true_false','ayah'].includes(String(type))) throw new ContentError(`نوع السؤال غير مدعوم: ${String(type)}`,'unsupported_type');
+  const prompt=str(r.prompt,'نص السؤال'); const options=r.options;
+  if((type==='single_choice'||type==='multiple_choice'||type==='ayah') && (!Array.isArray(options)||options.length<2||options.some(x=>typeof x!=='string'||!x.trim()))) throw new ContentError(`خيارات السؤال ${id} غير صالحة`);
+  const answer=r.correctAnswer;
+  if(type==='single_choice'||type==='ayah') { if(!Number.isInteger(answer)||Number(answer)<0||Number(answer)>=((options as unknown[]).length)) throw new ContentError(`إجابة السؤال ${id} غير صالحة`); }
+  if(type==='multiple_choice') { if(!Array.isArray(answer)||answer.length===0||answer.some(x=>!Number.isInteger(x)||Number(x)<0||Number(x)>=(options as unknown[]).length)) throw new ContentError(`إجابات السؤال ${id} غير صالحة`); }
+  if(type==='true_false'&&typeof answer!=='boolean') throw new ContentError(`إجابة السؤال ${id} غير صالحة`);
+  return {id,type:type as QuestionType,prompt,options:options as string[]|undefined,correctAnswer:answer as Question['correctAnswer'],explanation:typeof r.explanation==='string'?r.explanation:undefined,reference:r.reference as RawRecord|string|undefined};
+}
+export function parseManifest(raw:unknown):Manifest { if(!raw||typeof raw!=='object') throw new ContentError('المانيفست غير صالح'); const r=raw as RawRecord; if(r.schemaVersion!==1||!Number.isInteger(r.contentVersion)||!Array.isArray(r.exams)) throw new ContentError('إصدار أو بنية المانيفست غير مدعومة'); const ids=new Set<string>(); const exams=r.exams.map((x,i)=>{if(!x||typeof x!=='object')throw new ContentError(`تعريف الاختبار ${i+1} تالف`); const e=x as RawRecord; const id=str(e.id,'معرّف الاختبار'); if(ids.has(id))throw new ContentError(`معرّف اختبار مكرر: ${id}`);ids.add(id); if(!Number.isInteger(e.version)||Number(e.version)<1)throw new ContentError(`نسخة الاختبار ${id} غير صالحة`); if(!str(e.title,'عنوان الاختبار')||!str(e.file,'ملف الاختبار'))throw new ContentError(`تعريف الاختبار ${id} ناقص`); if(e.includeInRandom!==undefined&&typeof e.includeInRandom!=='boolean')throw new ContentError(`includeInRandom غير صالح في ${id}`); return e as unknown as ManifestExam; }); return {schemaVersion:1,contentVersion:Number(r.contentVersion),exams}; }
+export function parseExam(raw:unknown, expected:ManifestExam):Exam { if(!raw||typeof raw!=='object')throw new ContentError('ملف الاختبار غير صالح'); const r=raw as RawRecord; if(r.schemaVersion!==1||r.id!==expected.id||r.version!==expected.version||!Array.isArray(r.questions)||r.questions.length===0)throw new ContentError(`بيانات الاختبار ${expected.id} لا تطابق المانيفست`); const questions=r.questions.map(question); const ids=new Set(questions.map(q=>q.id)); if(ids.size!==questions.length)throw new ContentError(`معرّفات أسئلة مكررة في ${expected.id}`); return {id:String(r.id),version:Number(r.version),title:expected.title,category:typeof r.category==='string'?r.category:expected.category,description:typeof r.description==='string'?r.description:undefined,questions}; }
+function refFor(e:ManifestExam){ if(e.categoryId)return `local:c:${e.categoryId}`; return `remote:c:${(e.newCategoryName||e.category||'غير مصنف').trim().replace(/\s+/g,'_')}`; }
+export function resolveCategoryTree(exams:ManifestExam[]):CategoryNode[]{ const roots=new Map<string,CategoryNode>(); for(const e of exams){const ref=refFor(e); let c=roots.get(ref); if(!c){c={reference:ref,name:e.newCategoryName||e.category||'غير مصنف',subcategories:new Map(),exams:[]};roots.set(ref,c);} if(e.subcategoryId||e.newSubcategoryName){const sref=e.subcategoryId?`local:sc:${e.subcategoryId}`:`remote:sc:${ref}:${(e.newSubcategoryName||'').trim().replace(/\s+/g,'_')}`;let s=c.subcategories.get(sref);if(!s){s={reference:sref,name:e.newSubcategoryName||`فرع ${e.subcategoryId}`,subcategories:new Map(),exams:[]};c.subcategories.set(sref,s);}s.exams.push(e);}else c.exams.push(e); } return [...roots.values()]; }
+export function eligibleRandomExams(manifest:Manifest):ManifestExam[]{ return manifest.exams.filter(e=>e.includeInRandom===true && Boolean(e.categoryId||e.newCategoryName||e.category)); }
+export function scoreQuestion(q:Question, answer:number|number[]|boolean):boolean { if(q.type==='multiple_choice')return Array.isArray(answer)&&Array.isArray(q.correctAnswer)&&answer.slice().sort().join(',')===q.correctAnswer.slice().sort().join(','); return answer===q.correctAnswer; }

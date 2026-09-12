@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "id": "quran_qalon",
+  "version": 5,
+  "title": "اختبارات القرآن - قالون",
+  "language": "ar",
+  "category": "quran",
+  "description": "أسئلة قرآنية برواية قالون وفق منهج جمع المقرئين.",
+  "updatedAt": "2026-09-09",
+  "questions": [
+    {
+      "id": "q001",
+      "type": "single_choice",
+      "prompt": "ما تعريف المد في الاصطلاح؟",
+      "options": [
+        "زيادة حرف على حرف",
+        "إطالة الصوت بحرف من حروف المد",
+        "قلقلة الحرف الساكن",
+        "إظهار الحرف عند التقائه بمخرج آخر"
+      ],
+      "correctAnswer": 1,
+      "category": "quran",
+      "subcategory": "tajweed",
+      "difficulty": "easy",
+      "points": 1,
+      "explanation": "المد اصطلاحاً: إطالة الصوت بحرف من حروف المد (أ، و، ي)."
+    },
+    {
+      "id": "q002",
+      "type": "single_choice",
+      "prompt": "كم عدد حروف الإظهار الحلقي؟",
+      "options": ["ثلاثة", "خمسة", "ستة", "ثمانية"],
+      "correctAnswer": 2,
+      "category": "quran",
+      "subcategory": "tajweed",
+      "difficulty": "medium",
+      "points": 2,
+      "explanation": "حروف الإظهار الحلقي ستة: الهمزة، الهاء، العين، الحاء، الغين، الخاء."
+    },
+    {
+      "id": "q003",
+      "type": "ayah",
+      "prompt": "إلى أي سورة تنتمي هذه الآية؟«قُلِ الْحَمْدُ لِلَّهِ الَّذِي أَنْزَلَ عَلَىٰ عَبْدِهِ الْكِتَابَ»",
+      "options": ["البقرة", "مريم", "الأنعام", "الكهف"],
+      "correctAnswer": 3,
+      "category": "quran",
+      "subcategory": "qalon",
+      "difficulty": "medium",
+      "points": 1,
+      "reference": {
+        "kind": "ayah",
+        "surahId": 18,
+        "surahName": "الكهف",
+        "verse": 1,
+        "tafseer": "الحمد لله إطلاقاً على إنزال الكتاب كاملاً غير مجزّأ."
+      }
+    }
+  ]
+}

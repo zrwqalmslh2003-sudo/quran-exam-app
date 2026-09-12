@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      run_integration:
+        description: 'Run GitHub content integration test'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   build:
@@ -38,6 +44,13 @@ jobs:
 
       - name: Analyze
         run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Run GitHub content integration test
+        if: github.event_name == 'workflow_dispatch' && inputs.run_integration == true
+        run: flutter test --dart-define=RUN_INTEGRATION=true test/integration_github_update_test.dart
 
       - name: Build APK
         run: flutter build apk --release

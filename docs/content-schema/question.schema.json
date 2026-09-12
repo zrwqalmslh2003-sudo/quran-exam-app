@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://qalon.app/schema/question.schema.json",
+  "title": "Question",
+  "description": "Core question contract (schemaVersion 1). The 'type' field is the extension point: new question types reuse this shape and only add fields, never change the meaning of existing ones.",
+  "type": "object",
+  "required": ["id", "type", "prompt"],
+  "additionalProperties": true,
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.-]+$",
+      "description": "Unique identifier within its exam. Must not be reused between questions of the same exam."
+    },
+    "type": {
+      "type": "string",
+      "enum": ["single_choice", "multiple_choice", "true_false", "ordering", "fill_blank", "image", "ayah"],
+      "description": "Question kind. single_choice and ayah are fixed in v1; the rest are reserved extension points."
+    },
+    "prompt": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The question text shown to the user."
+    },
+    "options": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 2,
+      "description": "Answer choices. Required for choice-based types and ayah."
+    },
+    "correctAnswer": {
+      "type": ["integer", "array", "boolean", "string"],
+      "description": "Correct answer. Expected shape depends on 'type' (see allOf below). Indexes are 0-based."
+    },
+    "category": {
+      "type": "string",
+      "description": "Top-level category id (see categories.json). Optional; used for filtering and scoring."
+    },
+    "subcategory": {
+      "type": "string",
+      "description": "Subcategory id. Optional."
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": ["easy", "medium", "hard", "expert"],
+      "description": "Optional difficulty level. Default 'easy'."
+    },
+    "explanation": {
+      "type": "string",
+      "description": "Optional explanation shown after answering."
+    },
+    "points": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Scoring weight. Default 1."
+    },
+    "order": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Display order within the exam. Optional; the array order is used otherwise."
+    },
+    "reference": {
+      "type": ["object", "string"],
+      "description": "Optional source reference, reserved for Quran/ayah questions (e.g. { kind: 'ayah', surahId, verse })."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "type": { "enum": ["single_choice", "ayah"] } }
+      },
+      "then": {
+        "required": ["options", "correctAnswer"],
+        "properties": {
+          "correctAnswer": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "type": { "const": "multiple_choice" } }
+      },
+      "then": {
+        "required": ["options", "correctAnswer"],
+        "properties": {
+          "correctAnswer": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "type": { "const": "true_false" } }
+      },
+      "then": {
+        "required": ["correctAnswer"],
+        "properties": {
+          "correctAnswer": { "type": "boolean" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "type": { "enum": ["ordering", "fill_blank", "image"] } }
+      },
+      "then": {
+        "description": "Reserved types. Exact answer shape is fixed when the type ships; existing files remain valid."
+      }
+    }
+  ]
+}

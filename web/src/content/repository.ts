@@ -1,0 +1,4 @@
+import { ContentError, Exam, Manifest, ManifestExam, parseExam, parseManifest } from '../domain/content';
+
+export const DEFAULT_BASE='https://raw.githubusercontent.com/zrwqalmslh2003-sudo/quran-exam-app-content/main';
+export class ContentRepository { constructor(private base=import.meta.env.VITE_CONTENT_BASE_URL||DEFAULT_BASE){} private async json(path:string){ const response=await fetch(`${this.base.replace(/\/$/,'')}/${path}`); if(!response.ok)throw new ContentError(`تعذر تحميل ${path} (${response.status})`,'network'); try{return await response.json();}catch{throw new ContentError(`الاستجابة ليست JSON صالحاً: ${path}`,'malformed_json');} } async fetchManifest():Promise<Manifest>{return parseManifest(await this.json('manifest.json'));} async fetchExam(entry:ManifestExam):Promise<Exam>{return parseExam(await this.json(entry.file),entry);} }

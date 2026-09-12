@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "contentVersion": 1,
+  "updatedAt": "2026-09-09",
+  "exams": [
+    {
+      "id": "quran_qalon",
+      "version": 1,
+      "title": "اختبارات قالون",
+      "file": "exams/quran_qalon.json",
+      "sha256": "7c58b22ef77cd8aaf0cc6a7329767f9505c1f60c732aa9d8832957d351f10d7e",
+      "category": "quran",
+      "questionCount": 520
+    }
+  ]
+}

@@ -9,12 +9,17 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  crypto: ^3.0.3
   share_plus: ^7.2.0
+  sqflite: ^2.3.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  sqflite_common_ffi: ^2.3.0
 
 flutter:
   uses-material-design: true
@@ -26,3 +31,4 @@ flutter:
     - assets/chapters.json
     - assets/verses.json
     - assets/tafseer.json
+    - assets/manifest.json
